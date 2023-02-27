@@ -22,6 +22,7 @@ argParser.add_argument('--nJobs',              action='store',      nargs='?', t
 argParser.add_argument('--job',                action='store',      nargs='?', type=int, default=0,  help="Run only job i")
 argParser.add_argument('--targetDir',          action='store',      default='v1')
 argParser.add_argument('--small',              action='store_true', help='Run only on a small subset of the data?')#, default = True)
+argParser.add_argument('--overwrite',          action='store',      nargs='?', choices = ['none', 'all', 'target'], default = 'none', help='Overwrite?')#, default = True)
 args = argParser.parse_args()
 
 import JetTracking.Tools.logger as _logger
@@ -57,6 +58,15 @@ if not os.path.exists( output_directory ):
 
 # output file & log files
 output_filename =  os.path.join(output_directory, sample.name+ '.root')
+
+# Check whether we have to do anything
+if os.path.exists( output_filename ) and checkRootFile( output_filename, checkForObjects=["Events"]) and args.overwrite =='none' :
+    logger.info( "File %s found. Quit.", output_filename )
+    sys.exit(0)
+
+# relocate original
+sample.copy_files( os.path.join(tmp_output_directory, "input") )
+
 _logger.   add_fileHandler( output_filename.replace('.root', '.log'), args.logLevel )
 _logger_rt.add_fileHandler( output_filename.replace('.root', '_rt.log'), args.logLevel )
 

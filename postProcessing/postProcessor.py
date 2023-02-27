@@ -5,7 +5,7 @@
 import os
 import ROOT
 import itertools
-from   Analysis.Tools.helpers import deltaR2
+from   Analysis.Tools.helpers import deltaR2, checkRootFile
 
 #RootTools
 from RootTools.core.standard import *
@@ -22,7 +22,8 @@ argParser.add_argument('--nJobs',              action='store',      nargs='?', t
 argParser.add_argument('--job',                action='store',      nargs='?', type=int, default=0,  help="Run only job i")
 argParser.add_argument('--targetDir',          action='store',      default='v1')
 argParser.add_argument('--small',              action='store_true', help='Run only on a small subset of the data?')#, default = True)
-argParser.add_argument('--overwrite',          action='store',      nargs='?', choices = ['none', 'all', 'target'], default = 'none', help='Overwrite?')#, default = True)
+argParser.add_argument('--overwrite',          action='store_true', help='Overwrite?')#, default = True)
+argParser.add_argument('--copy_input',         action='store_true', help='xrdcp input file?')#, default = True)
 args = argParser.parse_args()
 
 import JetTracking.Tools.logger as _logger
@@ -60,12 +61,13 @@ if not os.path.exists( output_directory ):
 output_filename =  os.path.join(output_directory, sample.name+ '.root')
 
 # Check whether we have to do anything
-if os.path.exists( output_filename ) and checkRootFile( output_filename, checkForObjects=["Events"]) and args.overwrite =='none' :
+if os.path.exists( output_filename ) and checkRootFile( output_filename, checkForObjects=["Events"]) and not args.overwrite:
     logger.info( "File %s found. Quit.", output_filename )
     sys.exit(0)
 
 # relocate original
-sample.copy_files( os.path.join(tmp_output_directory, "input") )
+if args.copy_input:
+    sample.copy_files( os.path.join(user.postprocessing_tmp_directory, "input") )
 
 _logger.   add_fileHandler( output_filename.replace('.root', '.log'), args.logLevel )
 _logger_rt.add_fileHandler( output_filename.replace('.root', '_rt.log'), args.logLevel )
@@ -80,15 +82,14 @@ products = {
     }
 
 # define tree maker
-variables = ["event/l", "run/I", "lumi/I"]
+variables = ["evt/l", "run/I", "lumi/I"]
 
 fwliteReader = sample.fwliteReader( products = products )
-fwliteReader.start()
 
 def filler( event ):
 
     event.run, event.lumi, event.evt = fwliteReader.evt
-    if fwliteReader.position % 100==0: logger.info("At event %i/%i", fwliteReader.position, fwliteReader.nEvents)
+    if fwliteReader.position % 100==0: logger.info("At event %i/%i", fwliteReader.position, min(fwliteReader.nEvents, maxEvents) if maxEvents>0 else fwliteReader.nEvents)
 
     muons = filter( lambda p:p.pt()>20., list(fwliteReader.event.muons) )
     if len(muons)<2: return
@@ -109,7 +110,7 @@ def filler( event ):
     j = jets[0]
 
     our_tracks = filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':j.phi(), 'eta':j.eta()})<0.4**2, list(fwliteReader.event.gt) )
-
+    
 # TreeMaker initialisation
 tmp_dir     = ROOT.gDirectory
 output_file = ROOT.TFile( output_filename, 'recreate')
@@ -122,6 +123,7 @@ maker = TreeMaker(
 tmp_dir.cd()
 
 maker.start()
+fwliteReader.start()
 
 counter = 0
 while fwliteReader.run():
@@ -131,5 +133,9 @@ while fwliteReader.run():
 
     if counter>=maxEvents and maxEvents>0:
         break
+
+output_file.cd()
+maker.tree.Write()
+output_file.Close()
 
 logger.info( "Done. Output: %s", output_filename )

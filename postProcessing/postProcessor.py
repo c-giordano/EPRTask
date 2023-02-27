@@ -47,16 +47,13 @@ r.start()
 
 counter = 0
 while r.run():
-    print r.event.evt, r.event.lumi, r.event.run, "Number of genJets", r.event.gt.size()
+    logger.debug( "Evt: %i %i %i Number of genJets: %i", r.event.evt, r.event.lumi, r.event.run, r.event.gt.size() )
     counter+=1
     muons = filter( lambda p:p.pt()>20., list(r.event.muons) )
     if len(muons)<2: continue
 
     Z_cand = None
     for m1, m2 in itertools.combinations(muons, 2):
-        #print m1.charge(), m2.charge()
-        #print (m1.p4()+m2.p4()).mass()
-        #print 
         
         if m1.charge()+m2.charge()==0 and abs( (m1.p4()+m2.p4()).mass() - 91.2 )<15:
             Z_cand = (m1,m2)
@@ -69,8 +66,6 @@ while r.run():
     jets = filter( lambda j:j.muonEnergyFraction()<0.2, list(r.event.jets) ) 
     if len(jets)<1: continue
     j = jets[0]
-
-    #print j.pt()
 
     our_tracks = filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':j.phi(), 'eta':j.eta()})<0.4**2, list(r.event.gt) )
 

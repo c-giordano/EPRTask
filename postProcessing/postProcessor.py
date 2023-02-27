@@ -42,7 +42,7 @@ if args.nJobs>1:
 # small option
 maxEvents = -1
 if args.small:
-    args.targetDir += "_small"
+    args.targetDir += "_mall"
     maxEvents       = 100
     sample.files=sample.files[:1]
 
@@ -70,28 +70,18 @@ products = {
     }
 
 # define tree maker
-variables = []
+variables = ["event/l", "run/I", "lumi/I"]
 
-# TreeMaker initialisation
-tmp_dir     = ROOT.gDirectory
-output_file = ROOT.TFile( output_filename, 'recreate')
-output_file.cd()
-maker = TreeMaker(
-    #sequence  = [ filler ],
-    variables = [ (TreeVariable.fromString(x) if type(x)==str else x) for x in variables ],
-    treeName = "Events"
-    )
-tmp_dir.cd()
+fwliteReader = sample.fwliteReader( products = products )
+fwliteReader.start()
 
-r = sample.fwliteReader( products = products )
-r.start()
+def filler( event ):
 
-counter = 0
-while r.run():
-    logger.debug( "Evt: %i %i %i Number of genJets: %i", r.event.evt, r.event.lumi, r.event.run, r.event.gt.size() )
-    counter+=1
-    muons = filter( lambda p:p.pt()>20., list(r.event.muons) )
-    if len(muons)<2: continue
+    event.run, event.lumi, event.evt = fwliteReader.evt
+    if fwliteReader.position % 100==0: logger.info("At event %i/%i", fwliteReader.position, fwliteReader.nEvents)
+
+    muons = filter( lambda p:p.pt()>20., list(fwliteReader.event.muons) )
+    if len(muons)<2: return
 
     Z_cand = None
     for m1, m2 in itertools.combinations(muons, 2):
@@ -100,20 +90,36 @@ while r.run():
             Z_cand = (m1,m2)
             break
 
-    if Z_cand is None: continue
+    if Z_cand is None: return
 
-    if r.event.jets.size()==0:continue
+    if fwliteReader.event.jets.size()==0:return
    
-    jets = filter( lambda j:j.muonEnergyFraction()<0.2, list(r.event.jets) ) 
-    if len(jets)<1: continue
+    jets = filter( lambda j:j.muonEnergyFraction()<0.2, list(fwliteReader.event.jets) ) 
+    if len(jets)<1: return
     j = jets[0]
 
-    our_tracks = filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':j.phi(), 'eta':j.eta()})<0.4**2, list(r.event.gt) )
+    our_tracks = filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':j.phi(), 'eta':j.eta()})<0.4**2, list(fwliteReader.event.gt) )
 
-    #for t in our_tracks:
-    #    print t.pt(), t.charge()
+# TreeMaker initialisation
+tmp_dir     = ROOT.gDirectory
+output_file = ROOT.TFile( output_filename, 'recreate')
+output_file.cd()
+maker = TreeMaker(
+    sequence  = [ filler ],
+    variables = [ (TreeVariable.fromString(x) if type(x)==str else x) for x in variables ],
+    treeName = "Events"
+    )
+tmp_dir.cd()
+
+maker.start()
+
+counter = 0
+while fwliteReader.run():
+    logger.debug( "Evt: %i %i %i Number of genJets: %i", fwliteReader.event.evt, fwliteReader.event.lumi, fwliteReader.event.run, fwliteReader.event.gt.size() )
+    maker.run()
+    counter+=1
 
     if counter>=maxEvents and maxEvents>0:
         break
 
-
+logger.info( "Done. Output: %s", output_filename )

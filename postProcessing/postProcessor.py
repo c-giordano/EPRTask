@@ -10,6 +10,9 @@ from   Analysis.Tools.helpers import deltaR2
 #RootTools
 from RootTools.core.standard import *
 
+# JetTracking
+import JetTracking.Tools.user as user
+
 # argParser
 import argparse
 argParser = argparse.ArgumentParser(description = "Argument parser")
@@ -17,6 +20,8 @@ argParser.add_argument('--logLevel',    action='store', nargs='?',  choices=['CR
 argParser.add_argument('--sample',      action='store', default='doubleMuon2018', help="Name of the sample.")
 argParser.add_argument('--nJobs',              action='store',      nargs='?', type=int, default=1,  help="Maximum number of simultaneous jobs.")
 argParser.add_argument('--job',                action='store',      nargs='?', type=int, default=0,  help="Run only job i")
+argParser.add_argument('--targetDir',          action='store',      default='v1')
+argParser.add_argument('--small',              action='store_true', help='Run only on a small subset of the data?')#, default = True)
 args = argParser.parse_args()
 
 import JetTracking.Tools.logger as _logger
@@ -32,7 +37,23 @@ if args.nJobs>1:
     n_files_after  = len(sample.files)
     logger.info( "Running job %i/%i over %i files from a total of %i.", args.job, args.nJobs, n_files_after, n_files_before)
 
+# small option
+maxEvents = -1
+if args.small:
+    args.targetDir += "_small"
+    maxEvents       = 100
+    sample.files=sample.files[:1]
 
+# Define & create output directory
+output_directory = os.path.join(user.postprocessing_output_directory, args.targetDir, sample.name) 
+if not os.path.exists( output_directory ):
+    try:
+        os.makedirs( output_directory )
+    except OSError:
+        pass
+    logger.info( "Created output directory %s", output_directory )
+
+# define reader
 products = {
 #    'slimmedJets':{'type':'vector<pat::Jet>', 'label':("slimmedJets", "", "reRECO")} 
 #      'genJets': {'type':'vector<reco::GenJet>', 'label':( "ak4GenJets" ) } ,
@@ -69,12 +90,12 @@ while r.run():
 
     our_tracks = filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':j.phi(), 'eta':j.eta()})<0.4**2, list(r.event.gt) )
 
-    for t in our_tracks:
-        print t.pt(), t.charge()
+    #for t in our_tracks:
+    #    print t.pt(), t.charge()
 
     print 
 
-    if counter>=500:
+    if counter>=maxEvents and maxEvents>0:
         break
 
 

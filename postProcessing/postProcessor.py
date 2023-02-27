@@ -15,7 +15,8 @@ import argparse
 argParser = argparse.ArgumentParser(description = "Argument parser")
 argParser.add_argument('--logLevel',    action='store', nargs='?',  choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG', 'TRACE', 'NOTSET'],  default='INFO', help="Log level for logging")
 argParser.add_argument('--sample',      action='store', default='doubleMuon2018', help="Name of the sample.")
-
+argParser.add_argument('--nJobs',              action='store',      nargs='?', type=int, default=1,  help="Maximum number of simultaneous jobs.")
+argParser.add_argument('--job',                action='store',      nargs='?', type=int, default=0,  help="Run only job i")
 args = argParser.parse_args()
 
 import JetTracking.Tools.logger as _logger
@@ -24,13 +25,19 @@ logger    = _logger.get_logger( args.logLevel, logFile = None )
 import JetTracking.samples.AOD as samples
 sample = getattr( samples, args.sample )
 
-sample.reduceFiles( to = 1 )
+# Run only job number "args.job" from total of "args.nJobs"
+if args.nJobs>1:
+    n_files_before = len(sample.files)
+    sample = sample.split(args.nJobs)[args.job]
+    n_files_after  = len(sample.files)
+    logger.info( "Running job %i/%i over %i files from a total of %i.", args.job, args.nJobs, n_files_after, n_files_before)
+
 
 products = {
 #    'slimmedJets':{'type':'vector<pat::Jet>', 'label':("slimmedJets", "", "reRECO")} 
+#      'genJets': {'type':'vector<reco::GenJet>', 'label':( "ak4GenJets" ) } ,
     'gt':{'type':'vector<reco::Track>', 'label':("generalTracks", "", "RECO")}, 
     'muons':{'type':'vector<reco::Muon>', 'label':("muons", "", "RECO")}, 
-#      'genJets': {'type':'vector<reco::GenJet>', 'label':( "ak4GenJets" ) } ,
     'jets': {'type': 'vector<reco::PFJet>',  'label': ("ak4PFJets", "", "RECO")}, 
     }
 

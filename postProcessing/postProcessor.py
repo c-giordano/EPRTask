@@ -1,11 +1,12 @@
 ''' FWLiteReader example: Loop over a sample and write some data to a histogram.
 '''
+
 # Standard imports
 import os
-import logging
 import ROOT
 import itertools
-from tWZ.Tools.helpers import deltaR2
+from   Analysis.Tools.helpers import deltaR2
+
 #RootTools
 from RootTools.core.standard import *
 
@@ -21,12 +22,10 @@ argParser.add_argument('--logLevel',
 )
 
 args = argParser.parse_args()
-logger = get_logger(args.logLevel, logFile = None)
 
+import JetTracking.Tools.logger as _logger
+logger    = _logger.get_logger( args.logLevel, logFile = None )
 
-#import tWZ.samples.GENandSIM_private as samples
-## from DAS
-#s = tOrtbar_WZ01j_OLRLL_LO
 s = FWLiteSample.fromFiles("test", ["root://cms-xrd-global.cern.ch//store/data/Run2018D/DoubleMuon/AOD/15Feb2022_UL2018-v1/2430000/0154B378-D9C6-B84C-A2C2-2AE956E91590.root"])
 
 s.reduceFiles( to = 1 )

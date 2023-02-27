@@ -13,22 +13,18 @@ from RootTools.core.standard import *
 # argParser
 import argparse
 argParser = argparse.ArgumentParser(description = "Argument parser")
-argParser.add_argument('--logLevel', 
-      action='store',
-      nargs='?',
-      choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG', 'TRACE', 'NOTSET'],
-      default='INFO',
-      help="Log level for logging"
-)
+argParser.add_argument('--logLevel',    action='store', nargs='?',  choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG', 'TRACE', 'NOTSET'],  default='INFO', help="Log level for logging")
+argParser.add_argument('--sample',      action='store', default='doubleMuon2018', help="Name of the sample.")
 
 args = argParser.parse_args()
 
 import JetTracking.Tools.logger as _logger
 logger    = _logger.get_logger( args.logLevel, logFile = None )
 
-s = FWLiteSample.fromFiles("test", ["root://cms-xrd-global.cern.ch//store/data/Run2018D/DoubleMuon/AOD/15Feb2022_UL2018-v1/2430000/0154B378-D9C6-B84C-A2C2-2AE956E91590.root"])
+import JetTracking.samples.AOD as samples
+sample = getattr( samples, args.sample )
 
-s.reduceFiles( to = 1 )
+sample.reduceFiles( to = 1 )
 
 products = {
 #    'slimmedJets':{'type':'vector<pat::Jet>', 'label':("slimmedJets", "", "reRECO")} 
@@ -38,7 +34,7 @@ products = {
     'jets': {'type': 'vector<reco::PFJet>',  'label': ("ak4PFJets", "", "RECO")}, 
     }
 
-r = s.fwliteReader( products = products )
+r = sample.fwliteReader( products = products )
 
 r.start()
 

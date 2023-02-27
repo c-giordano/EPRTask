@@ -26,6 +26,8 @@ args = argParser.parse_args()
 
 import JetTracking.Tools.logger as _logger
 logger    = _logger.get_logger( args.logLevel, logFile = None )
+import RootTools.core.logger as _logger_rt
+logger_rt = _logger_rt.get_logger(args.logLevel, logFile = None)
 
 import JetTracking.samples.AOD as samples
 sample = getattr( samples, args.sample )
@@ -53,6 +55,11 @@ if not os.path.exists( output_directory ):
         pass
     logger.info( "Created output directory %s", output_directory )
 
+# output file & log files
+output_filename =  os.path.join(output_directory, sample.name+ '.root')
+_logger.   add_fileHandler( output_filename.replace('.root', '.log'), args.logLevel )
+_logger_rt.add_fileHandler( output_filename.replace('.root', '_rt.log'), args.logLevel )
+
 # define reader
 products = {
 #    'slimmedJets':{'type':'vector<pat::Jet>', 'label':("slimmedJets", "", "reRECO")} 
@@ -62,8 +69,21 @@ products = {
     'jets': {'type': 'vector<reco::PFJet>',  'label': ("ak4PFJets", "", "RECO")}, 
     }
 
-r = sample.fwliteReader( products = products )
+# define tree maker
+variables = []
 
+# TreeMaker initialisation
+tmp_dir     = ROOT.gDirectory
+output_file = ROOT.TFile( output_filename, 'recreate')
+output_file.cd()
+maker = TreeMaker(
+    #sequence  = [ filler ],
+    variables = [ (TreeVariable.fromString(x) if type(x)==str else x) for x in variables ],
+    treeName = "Events"
+    )
+tmp_dir.cd()
+
+r = sample.fwliteReader( products = products )
 r.start()
 
 counter = 0
@@ -92,8 +112,6 @@ while r.run():
 
     #for t in our_tracks:
     #    print t.pt(), t.charge()
-
-    print 
 
     if counter>=maxEvents and maxEvents>0:
         break

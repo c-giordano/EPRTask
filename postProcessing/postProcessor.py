@@ -44,12 +44,12 @@ if args.nJobs>1:
 # small option
 maxEvents = -1
 if args.small:
-    args.targetDir += "_mall"
+    args.targetDir += "_small"
     maxEvents       = 100
     sample.files=sample.files[:1]
 
 # Define & create output directory
-output_directory = os.path.join(user.postprocessing_output_directory, args.targetDir, sample.name) 
+output_directory = os.path.join(user.postprocessing_output_directory, args.targetDir, sample.name)
 if not os.path.exists( output_directory ):
     try:
         os.makedirs( output_directory )
@@ -74,11 +74,11 @@ _logger_rt.add_fileHandler( output_filename.replace('.root', '_rt.log'), args.lo
 
 # define reader
 products = {
-#    'slimmedJets':{'type':'vector<pat::Jet>', 'label':("slimmedJets", "", "reRECO")} 
+#    'slimmedJets':{'type':'vector<pat::Jet>', 'label':("slimmedJets", "", "reRECO")}
 #      'genJets': {'type':'vector<reco::GenJet>', 'label':( "ak4GenJets" ) } ,
-    'gt':{'type':'vector<reco::Track>', 'label':("generalTracks", "", "RECO")}, 
-    'muons':{'type':'vector<reco::Muon>', 'label':("muons", "", "RECO")}, 
-    'jets': {'type': 'vector<reco::PFJet>',  'label': ("ak4PFJets", "", "RECO")}, 
+    'gt':{'type':'vector<reco::Track>', 'label':("generalTracks", "", "RECO")},
+    'muons':{'type':'vector<reco::Muon>', 'label':("muons", "", "RECO")},
+    'jets': {'type': 'vector<reco::PFJet>',  'label': ("ak4PFJets", "", "RECO")},
     }
 
 # define tree maker
@@ -96,7 +96,7 @@ def filler( event ):
 
     Z_cand = None
     for m1, m2 in itertools.combinations(muons, 2):
-        
+
         if m1.charge()+m2.charge()==0 and abs( (m1.p4()+m2.p4()).mass() - 91.2 )<15:
             Z_cand = (m1,m2)
             break
@@ -104,13 +104,13 @@ def filler( event ):
     if Z_cand is None: return
 
     if fwliteReader.event.jets.size()==0:return
-   
-    jets = filter( lambda j:j.muonEnergyFraction()<0.2, list(fwliteReader.event.jets) ) 
+
+    jets = filter( lambda j:j.muonEnergyFraction()<0.2, list(fwliteReader.event.jets) )
     if len(jets)<1: return
     j = jets[0]
 
     our_tracks = filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':j.phi(), 'eta':j.eta()})<0.4**2, list(fwliteReader.event.gt) )
-    
+
 # TreeMaker initialisation
 tmp_dir     = ROOT.gDirectory
 output_file = ROOT.TFile( output_filename, 'recreate')

@@ -83,6 +83,7 @@ products = {
 
 # define tree maker
 variables = ["evt/l", "run/I", "lumi/I"]
+variables.extend(["jets_pt/F"])
 
 fwliteReader = sample.fwliteReader( products = products )
 

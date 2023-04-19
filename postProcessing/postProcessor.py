@@ -82,6 +82,7 @@ products = {
 #      'genJets': {'type':'vector<reco::GenJet>', 'label':( "ak4GenJets" ) } ,
     'gt':{'type':'vector<reco::Track>', 'label':("generalTracks", "", "RECO")},
     'muons':{'type':'vector<reco::Muon>', 'label':("muons", "", "RECO")},
+#    'electrons':{'type':'vector<reco::Electron>', 'label':("electrons", "", "RECO")},
     'jets': {'type': 'vector<reco::PFJet>',  'label': ("ak4PFJets", "", "RECO")},
     }
 
@@ -92,7 +93,7 @@ variables = [
      "Pair[%s]"%pairVars,
      "evt/l", "run/I", "lumi/I",
      "Jet_pt/F", "Jet_eta/F", "Jet_phi/F",
-     "Z_pt/F", "Z_eta/F", "Z_phi/F", "Z_mass/F",
+     "Z_pt/F", "Z_eta/F", "Z_phi/F", "Z_mass/F", "Z_l_pdgId/I",
     ]
 pairVarNames = list( map( lambda p:p.split('/')[0], pairVars.split(',') ))
 fwliteReader = sample.fwliteReader( products = products )
@@ -113,9 +114,9 @@ def filler( event ):
     event.run, event.lumi, event.evt = fwliteReader.evt
     if fwliteReader.position % 100==0: logger.info("At event %i/%i", fwliteReader.position, min(fwliteReader.nEvents, maxEvents) if maxEvents>0 else fwliteReader.nEvents)
 
-    muons = filter( lambda p:p.pt()>20., list(fwliteReader.event.muons) )
-
     Z_cand = None
+
+    muons = filter( lambda p:p.pt()>20., list(fwliteReader.event.muons) )
     if len(muons)>2:
         for m1, m2 in itertools.combinations(muons, 2):
 
@@ -123,15 +124,26 @@ def filler( event ):
                 Z_cand = (m1,m2)
                 Z_p4 = Z_cand[0].p4()+Z_cand[1].p4()
                 event.Z_pt, event.Z_eta, event.Z_phi, event.Z_mass = Z_p4.Pt(), Z_p4.Eta(), Z_p4.Phi(), Z_p4.M()
+                event.Z_l_pdgId = 13
                 break
+
+#    electrons = filter( lambda p:p.pt()>20., list(fwliteReader.event.electrons) )
+#    if len(electrons)>2:
+#        for m1, m2 in itertools.combinations(electrons, 2):
+#
+#            if m1.charge()+m2.charge()==0 and abs( (m1.p4()+m2.p4()).mass() - 91.2 )<10:
+#                Z_cand = (m1,m2)
+#                Z_p4 = Z_cand[0].p4()+Z_cand[1].p4()
+#                event.Z_pt, event.Z_eta, event.Z_phi, event.Z_mass = Z_p4.Pt(), Z_p4.Eta(), Z_p4.Phi(), Z_p4.M()
+#                event.Z_l_pdgId = 11
+#                break
 
     jet = None
     if fwliteReader.event.jets.size()>0:
         jets = filter( lambda j:j.muonEnergyFraction()<0.2, list(fwliteReader.event.jets) )
         if len(jets)>0:
             jet = jets[0]
-
-        event.Jet_pt, event.Jet_eta, event.Jet_phi, event.Jet_mass = jet.p4().Pt(), jet.p4().Eta(), jet.p4().Phi(), jet.p4().M()
+            event.Jet_pt, event.Jet_eta, event.Jet_phi, event.Jet_mass = jet.p4().Pt(), jet.p4().Eta(), jet.p4().Phi(), jet.p4().M()
 
     if jet is None or Z_cand is None: return
 

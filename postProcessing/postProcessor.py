@@ -2,10 +2,10 @@
 '''
 
 # Standard imports
-import os
+import os, sys
 import ROOT
 import itertools
-from   Analysis.Tools.helpers import deltaR2, checkRootFile
+from   Analysis.Tools.helpers import deltaR2, deltaPhi, checkRootFile
 
 #RootTools
 from RootTools.core.standard import *
@@ -25,6 +25,10 @@ argParser.add_argument('--small',              action='store_true', help='Run on
 argParser.add_argument('--overwrite',          action='store_true', help='Overwrite?')#, default = True)
 argParser.add_argument('--copy_input',         action='store_true', help='xrdcp input file?')#, default = True)
 args = argParser.parse_args()
+
+# some hard-coded steering variables
+minPairPt = 10
+
 
 import JetTracking.Tools.logger as _logger
 logger    = _logger.get_logger( args.logLevel, logFile = None )
@@ -81,11 +85,28 @@ products = {
     'jets': {'type': 'vector<reco::PFJet>',  'label': ("ak4PFJets", "", "RECO")},
     }
 
-# define tree maker
-variables = ["evt/l", "run/I", "lumi/I"]
-variables.extend(["jets_pt/F"])
 
+# define tree maker
+pairVars = "pt/F,eta/F,phi/F,mass/F,deltaPhi/F,deltaEta/F,isC/I,isS/I,tp_pt/F,tp_eta/F,tp_phi/F,tm_pt/F,tm_eta/F,tm_phi/F" 
+variables = [
+     "Pair[%s]"%pairVars,
+     "evt/l", "run/I", "lumi/I",
+     "Jet_pt/F", "Jet_eta/F", "Jet_phi/F",
+     "Z_pt/F", "Z_eta/F", "Z_phi/F", "Z_mass/F",
+    ]
+pairVarNames = list( map( lambda p:p.split('/')[0], pairVars.split(',') ))
 fwliteReader = sample.fwliteReader( products = products )
+
+def fill_vector_collection( event, collection_name, collection_varnames, objects, maxN = 100):
+    setattr( event, "n"+collection_name, len(objects) )
+    for i_obj, obj in enumerate(objects[:maxN]):
+        for var in collection_varnames:
+            if var in obj.keys():
+                if type(obj[var]) == type("string"):
+                    obj[var] = int(ord(obj[var]))
+                if type(obj[var]) == type(True):
+                    obj[var] = int(obj[var])
+                getattr(event, collection_name+"_"+var)[i_obj] = obj[var]
 
 def filler( event ):
 
@@ -93,31 +114,71 @@ def filler( event ):
     if fwliteReader.position % 100==0: logger.info("At event %i/%i", fwliteReader.position, min(fwliteReader.nEvents, maxEvents) if maxEvents>0 else fwliteReader.nEvents)
 
     muons = filter( lambda p:p.pt()>20., list(fwliteReader.event.muons) )
-    if len(muons)<2: return
 
     Z_cand = None
-    for m1, m2 in itertools.combinations(muons, 2):
+    if len(muons)>2:
+        for m1, m2 in itertools.combinations(muons, 2):
 
-        if m1.charge()+m2.charge()==0 and abs( (m1.p4()+m2.p4()).mass() - 91.2 )<15:
-            Z_cand = (m1,m2)
-            break
+            if m1.charge()+m2.charge()==0 and abs( (m1.p4()+m2.p4()).mass() - 91.2 )<15:
+                Z_cand = (m1,m2)
+                Z_p4 = Z_cand[0].p4()+Z_cand[1].p4()
+                event.Z_pt, event.Z_eta, event.Z_phi, event.Z_mass = Z_p4.Pt(), Z_p4.Eta(), Z_p4.Phi(), Z_p4.M()
+                break
 
-    if Z_cand is None: return
+    jet = None
+    if fwliteReader.event.jets.size()>0:
+        jets = filter( lambda j:j.muonEnergyFraction()<0.2, list(fwliteReader.event.jets) )
+        if len(jets)>0:
+            jet = jets[0]
 
-    if fwliteReader.event.jets.size()==0:return
+        event.Jet_pt, event.Jet_eta, event.Jet_phi, event.Jet_mass = jet.p4().Pt(), jet.p4().Eta(), jet.p4().Phi(), jet.p4().M()
 
-    jets = filter( lambda j:j.muonEnergyFraction()<0.2, list(fwliteReader.event.jets) )
-    if len(jets)<1: return
-    j = jets[0]
+    if jet is None or Z_cand is None: return
 
-    our_tracks = filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':j.phi(), 'eta':j.eta()})<0.4**2, list(fwliteReader.event.gt) )
+    # select tracks within a high-pt jet
+    if jet and Z_cand:
+        our_tracks = sorted( filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':jet.phi(), 'eta':jet.eta()})<0.4**2, list(fwliteReader.event.gt) ), key = lambda t:-t.pt() )
+
+        logger.debug( "Our tracks %i, pts: %r" %( len(our_tracks), [t.pt() for t in our_tracks]) )
+
+        pairs = []
+        for pair in itertools.combinations( list(our_tracks), 2):
+            if pair[0].charge()+pair[1].charge()!=0: continue
+            if pair[0].charge()>pair[1].charge():
+                tp, tm = pair
+            else:
+                tm, tp = pair
+            tp_p4 = ROOT.Math.PtEtaPhiMVector(tp.pt(), tp.eta(), tp.phi(), 0) 
+            tm_p4 = ROOT.Math.PtEtaPhiMVector(tm.pt(), tm.eta(), tm.phi(), 0) 
+            pair_p4 = tp_p4 + tm_p4
+            # require minimum pt & OS pairs
+            if not pair_p4.pt()>minPairPt: continue
+
+            pair_dict = { 'tp_pt':tp.pt(), 'tp_eta':tp.eta(), 'tp_phi':tp.phi() }
+            pair_dict.update( { 'tm_pt':tm.pt(), 'tm_eta':tm.eta(), 'tm_phi':tm.phi()})
+            pair_dict.update( { 'pt':pair_p4.Pt(), 'eta':pair_p4.Eta(), 'phi':pair_p4.Phi(), 'mass':pair_p4.M()})
+            pair_dict['deltaPhi'] = deltaPhi( pair_dict['tp_phi'], pair_dict['tm_phi'], returnAbs=False)
+            pair_dict['deltaPhi'] = tp.eta()-tm.eta() 
+            pair_dict['isC']      = pair_dict['deltaPhi']>0 
+            pair_dict['isS']      = not pair_dict['isC'] 
+            pairs.append( pair_dict )
+
+            if len(pairs)>=100: break
+
+        #if len(pairs)>0:
+        #    print(pairs)
+
+        fill_vector_collection( event, "Pair", pairVarNames, pairs)
+
+    # We need to report success, because we fill only if we have found pairs
+    return len(pairs)>0
 
 # TreeMaker initialisation
 tmp_dir     = ROOT.gDirectory
 output_file = ROOT.TFile( output_filename, 'recreate')
 output_file.cd()
 maker = TreeMaker(
-    sequence  = [ filler ],
+    #sequence  = [ filler ],
     variables = [ (TreeVariable.fromString(x) if type(x)==str else x) for x in variables ],
     treeName = "Events"
     )
@@ -128,8 +189,12 @@ fwliteReader.start()
 
 counter = 0
 while fwliteReader.run():
-    logger.debug( "Evt: %i %i %i Number of genJets: %i", fwliteReader.event.evt, fwliteReader.event.lumi, fwliteReader.event.run, fwliteReader.event.gt.size() )
-    maker.run()
+    logger.debug( "Evt: %i %i %i Number of Tracks: %i", fwliteReader.event.evt, fwliteReader.event.lumi, fwliteReader.event.run, fwliteReader.event.gt.size() )
+
+    #maker.fill()
+    success = filler( maker.event )
+    if success:
+        maker.run()
     counter+=1
 
     if counter>=maxEvents and maxEvents>0:

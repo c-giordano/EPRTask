@@ -2,7 +2,6 @@ import os
 import logging
 import ROOT
 import itertools
-from tWZ.Tools.helpers import deltaR2
 #RootTools
 from RootTools.core.standard import *
 

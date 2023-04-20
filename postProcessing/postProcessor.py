@@ -88,7 +88,7 @@ products = {
 
 
 # define tree maker
-pairVars = "pt/F,eta/F,phi/F,mass/F,deltaPhi/F,deltaEta/F,isC/I,isS/I,tp_pt/F,tp_eta/F,tp_phi/F,tm_pt/F,tm_eta/F,tm_phi/F" 
+pairVars = "pt/F,eta/F,phi/F,mass/F,deltaPhi/F,deltaEta/F,isC/I,isS/I,tp_pt/F,tp_eta/F,tp_phi/F,tm_pt/F,tm_eta/F,tm_phi/F"
 variables = [
      "Pair[%s]"%pairVars,
      "evt/l", "run/I", "lumi/I",
@@ -160,8 +160,8 @@ def filler( event ):
                 tp, tm = pair
             else:
                 tm, tp = pair
-            tp_p4 = ROOT.Math.PtEtaPhiMVector(tp.pt(), tp.eta(), tp.phi(), 0) 
-            tm_p4 = ROOT.Math.PtEtaPhiMVector(tm.pt(), tm.eta(), tm.phi(), 0) 
+            tp_p4 = ROOT.Math.PtEtaPhiMVector(tp.pt(), tp.eta(), tp.phi(), 0)
+            tm_p4 = ROOT.Math.PtEtaPhiMVector(tm.pt(), tm.eta(), tm.phi(), 0)
             pair_p4 = tp_p4 + tm_p4
             # require minimum pt & OS pairs
             if not pair_p4.pt()>minPairPt: continue
@@ -172,7 +172,7 @@ def filler( event ):
             pair_dict['deltaPhi'] = deltaPhi( pair_dict['tp_phi'], pair_dict['tm_phi'], returnAbs=False)
             pair_dict['deltaEta'] = tp.eta()-tm.eta() 
             pair_dict['isC']      = pair_dict['deltaPhi']>0 
-            pair_dict['isS']      = not pair_dict['isC'] 
+            pair_dict['isS']      = not pair_dict['isC']
             pairs.append( pair_dict )
 
             if len(pairs)>=100: break

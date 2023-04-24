@@ -27,7 +27,7 @@ argParser.add_argument('--copy_input',         action='store_true', help='xrdcp 
 args = argParser.parse_args()
 
 # some hard-coded steering variables
-minPairPt = 10
+minPairPt = 2
 
 
 import JetTracking.Tools.logger as _logger
@@ -94,6 +94,7 @@ variables = [
      "evt/l", "run/I", "lumi/I",
      "Jet_pt/F", "Jet_eta/F", "Jet_phi/F",
      "Z_pt/F", "Z_eta/F", "Z_phi/F", "Z_mass/F", "Z_l_pdgId/I",
+     "Track_pt/F", "Track_eta/F", "Track_phi/F", "Track_charge/I"
     ]
 pairVarNames = list( map( lambda p:p.split('/')[0], pairVars.split(',') ))
 fwliteReader = sample.fwliteReader( products = products )
@@ -141,6 +142,7 @@ def filler( event ):
     jet = None
     if fwliteReader.event.jets.size()>0:
         jets = filter( lambda j:j.muonEnergyFraction()<0.2, list(fwliteReader.event.jets) )
+        # print(len(jets))
         if len(jets)>0:
             jet = jets[0]
             event.Jet_pt, event.Jet_eta, event.Jet_phi, event.Jet_mass = jet.p4().Pt(), jet.p4().Eta(), jet.p4().Phi(), jet.p4().M()
@@ -150,8 +152,12 @@ def filler( event ):
     # select tracks within a high-pt jet
     if jet and Z_cand:
         our_tracks = sorted( filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':jet.phi(), 'eta':jet.eta()})<0.4**2, list(fwliteReader.event.gt) ), key = lambda t:-t.pt() )
-
+        # print(our_tracks)
+        # print(len(our_tracks))
         logger.debug( "Our tracks %i, pts: %r" %( len(our_tracks), [t.pt() for t in our_tracks]) )
+        if len(our_tracks)>0:
+            track = our_tracks[0]
+            event.Track_pt, event.Track_eta, event.Track_phi, event.Track_charge = track.pt(), track.eta(), track.phi(), track.charge()
 
         pairs = []
         for pair in itertools.combinations( list(our_tracks), 2):
@@ -171,7 +177,7 @@ def filler( event ):
             pair_dict.update( { 'pt':pair_p4.Pt(), 'eta':pair_p4.Eta(), 'phi':pair_p4.Phi(), 'mass':pair_p4.M()})
             pair_dict['deltaPhi'] = deltaPhi( pair_dict['tp_phi'], pair_dict['tm_phi'], returnAbs=False)
             pair_dict['deltaEta'] = tp.eta()-tm.eta()
-            pair_dict['isC']      = pair_dict['deltaPhi']>0 
+            pair_dict['isC']      = pair_dict['deltaPhi']>0
             pair_dict['isS']      = not pair_dict['isC']
             pairs.append( pair_dict )
 

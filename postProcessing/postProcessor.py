@@ -38,6 +38,15 @@ logger_rt = _logger_rt.get_logger(args.logLevel, logFile = None)
 import JetTracking.samples.AOD as samples
 sample = getattr( samples, args.sample )
 
+# Define & create output directory
+output_directory = os.path.join(user.postprocessing_output_directory, args.targetDir, sample.name)
+if not os.path.exists( output_directory ):
+    try:
+        os.makedirs( output_directory )
+    except OSError:
+        pass
+    logger.info( "Created output directory %s", output_directory )
+
 # Run only job number "args.job" from total of "args.nJobs"
 if args.nJobs>1:
     n_files_before = len(sample.files)
@@ -51,15 +60,6 @@ if args.small:
     args.targetDir += "_small"
     maxEvents       = 100
     sample.files=sample.files[:1]
-
-# Define & create output directory
-output_directory = os.path.join(user.postprocessing_output_directory, args.targetDir, sample.name)
-if not os.path.exists( output_directory ):
-    try:
-        os.makedirs( output_directory )
-    except OSError:
-        pass
-    logger.info( "Created output directory %s", output_directory )
 
 # output file & log files
 output_filename =  os.path.join(output_directory, sample.name+ '.root')
@@ -125,7 +125,7 @@ def filler( event ):
                 Z_cand = (m1,m2)
                 Z_p4 = Z_cand[0].p4()+Z_cand[1].p4()
                 event.Z_pt, event.Z_eta, event.Z_phi, event.Z_mass = Z_p4.Pt(), Z_p4.Eta(), Z_p4.Phi(), Z_p4.M()
-                event.Z_l_pdgId = 13
+#                event.Z_l_pdgId = 13
                 break
 
 #    electrons = filter( lambda p:p.pt()>20., list(fwliteReader.event.electrons) )
@@ -176,8 +176,13 @@ def filler( event ):
             pair_dict.update( { 'tm_pt':tm.pt(), 'tm_eta':tm.eta(), 'tm_phi':tm.phi()})
             pair_dict.update( { 'pt':pair_p4.Pt(), 'eta':pair_p4.Eta(), 'phi':pair_p4.Phi(), 'mass':pair_p4.M()})
             pair_dict['deltaPhi'] = deltaPhi( pair_dict['tp_phi'], pair_dict['tm_phi'], returnAbs=False)
+<<<<<<< HEAD
             pair_dict['deltaEta'] = tp.eta()-tm.eta()
             pair_dict['isC']      = pair_dict['deltaPhi']>0
+=======
+            pair_dict['deltaEta'] = tp.eta()-tm.eta() 
+            pair_dict['isC']      = pair_dict['deltaPhi']>0 
+>>>>>>> 4606d49d47fca7404ae90b755569b0f63af772b9
             pair_dict['isS']      = not pair_dict['isC']
             pairs.append( pair_dict )
 

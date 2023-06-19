@@ -18,11 +18,11 @@ import JetTracking.Tools.user as user
 import argparse
 argParser = argparse.ArgumentParser(description = "Argument parser")
 argParser.add_argument('--logLevel',    action='store', nargs='?',  choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG', 'TRACE', 'NOTSET'],  default='INFO', help="Log level for logging")
-argParser.add_argument('--sample',      action='store', default='doubleMuon2018', help="Name of the sample.")
-argParser.add_argument('--sampleFile',  action='store', default='DYJetsToLL_M50_HT1200to2500_LO', help="Name of the sample.")
+argParser.add_argument('--sample',      action='store', default='DYJetsToLL_M50_HT1200to2500_LO', help="Name of the sample.")
+argParser.add_argument('--sampleFile',  action='store', default='miniAOD_Fall17', help="Name of the sample.")
 argParser.add_argument('--nJobs',              action='store',      nargs='?', type=int, default=1,  help="Maximum number of simultaneous jobs.")
 argParser.add_argument('--job',                action='store',      nargs='?', type=int, default=0,  help="Run only job i")
-argParser.add_argument('--targetDir',          action='store',      default='v1')
+argParser.add_argument('--targetDir',          action='store',      default='v2')
 argParser.add_argument('--small',              action='store_true', help='Run only on a small subset of the data?')#, default = True)
 argParser.add_argument('--overwrite',          action='store_true', help='Overwrite?')#, default = True)
 argParser.add_argument('--copy_input',         action='store_true', help='xrdcp input file?')#, default = True)
@@ -40,7 +40,7 @@ exec("import JetTracking.samples.%s as samples"%args.sampleFile)
 sample = getattr( samples, args.sample )
 
 # Define & create output directory
-output_directory = os.path.join(user.postprocessing_output_directory, args.targetDir, sample.name)
+output_directory = os.path.join(user.postprocessing_output_directory, args.targetDir, args.sampleFile, sample.name)
 if not os.path.exists( output_directory ):
     try:
         os.makedirs( output_directory )

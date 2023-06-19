@@ -6,6 +6,7 @@ import os, sys
 import ROOT
 import itertools
 from   Analysis.Tools.helpers import deltaR2, deltaPhi, checkRootFile
+from   math import sin, cos, sqrt, atan2
 
 #RootTools
 from RootTools.core.standard import *
@@ -18,6 +19,7 @@ import argparse
 argParser = argparse.ArgumentParser(description = "Argument parser")
 argParser.add_argument('--logLevel',    action='store', nargs='?',  choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG', 'TRACE', 'NOTSET'],  default='INFO', help="Log level for logging")
 argParser.add_argument('--sample',      action='store', default='doubleMuon2018', help="Name of the sample.")
+argParser.add_argument('--sampleFile',  action='store', default='DYJetsToLL_M50_HT1200to2500_LO', help="Name of the sample.")
 argParser.add_argument('--nJobs',              action='store',      nargs='?', type=int, default=1,  help="Maximum number of simultaneous jobs.")
 argParser.add_argument('--job',                action='store',      nargs='?', type=int, default=0,  help="Run only job i")
 argParser.add_argument('--targetDir',          action='store',      default='v1')
@@ -29,13 +31,12 @@ args = argParser.parse_args()
 # some hard-coded steering variables
 minPairPt = 2
 
-
 import JetTracking.Tools.logger as _logger
 logger    = _logger.get_logger( args.logLevel, logFile = None )
 import RootTools.core.logger as _logger_rt
 logger_rt = _logger_rt.get_logger(args.logLevel, logFile = None)
 
-import JetTracking.samples.AOD as samples
+exec("import JetTracking.samples.%s as samples"%args.sampleFile)
 sample = getattr( samples, args.sample )
 
 # Define & create output directory
@@ -78,17 +79,22 @@ _logger_rt.add_fileHandler( output_filename.replace('.root', '_rt.log'), args.lo
 
 # define reader
 products = {
-#    'slimmedJets':{'type':'vector<pat::Jet>', 'label':("slimmedJets", "", "reRECO")}
+    'jets':{'type':'vector<pat::Jet>', 'label':("slimmedJets")},
 #      'genJets': {'type':'vector<reco::GenJet>', 'label':( "ak4GenJets" ) } ,
-    'gt':{'type':'vector<reco::Track>', 'label':("generalTracks", "", "RECO")},
-    'muons':{'type':'vector<reco::Muon>', 'label':("muons", "", "RECO")},
+    #'gt':{'type':'vector<reco::Track>', 'label':("generalTracks", "", "RECO")},
+#    'gt':{'type':'vector<reco::Track>', 'label':("generalTracks", "", "RECO")},
+    #'gt':{'type':'vector<reco::Track>', 'label':("generalTracks", "", "RECO")},
+    'pf':{'type':'vector<pat::PackedCandidate>', 'label': ( "packedPFCandidates" )},
+    'pflost':{'type':'vector<pat::PackedCandidate>', 'label': ( "lostTracks" )},
+
+    'muons':{'type':'vector<pat::Muon>', 'label':("slimmedMuons", "", "PAT")},
 #    'electrons':{'type':'vector<reco::Electron>', 'label':("electrons", "", "RECO")},
-    'jets': {'type': 'vector<reco::PFJet>',  'label': ("ak4PFJets", "", "RECO")},
+#    'jets': {'type': 'vector<reco::PFJet>',  'label': ("ak4PFJets", "", "RECO")},
     }
 
 
 # define tree maker
-pairVars = "pt/F,eta/F,phi/F,mass/F,deltaPhi/F,deltaEta/F,isC/I,isS/I,tp_pt/F,tp_eta/F,tp_phi/F,tm_pt/F,tm_eta/F,tm_phi/F"
+pairVars = "pt/F,eta/F,phi/F,mass/F,deltaPhi/F,deltaEta/F,isC/I,isS/I,tp_pt/F,tp_eta/F,tp_phi/F,tm_pt/F,tm_eta/F,tm_phi/F,C_x/F,C_y/F,C_R/F,C_phi/F"
 variables = [
      "Pair[%s]"%pairVars,
      "evt/l", "run/I", "lumi/I",
@@ -128,17 +134,6 @@ def filler( event ):
 #                event.Z_l_pdgId = 13
                 break
 
-#    electrons = filter( lambda p:p.pt()>20., list(fwliteReader.event.electrons) )
-#    if len(electrons)>2:
-#        for m1, m2 in itertools.combinations(electrons, 2):
-#
-#            if m1.charge()+m2.charge()==0 and abs( (m1.p4()+m2.p4()).mass() - 91.2 )<10:
-#                Z_cand = (m1,m2)
-#                Z_p4 = Z_cand[0].p4()+Z_cand[1].p4()
-#                event.Z_pt, event.Z_eta, event.Z_phi, event.Z_mass = Z_p4.Pt(), Z_p4.Eta(), Z_p4.Phi(), Z_p4.M()
-#                event.Z_l_pdgId = 11
-#                break
-
     jet = None
     if fwliteReader.event.jets.size()>0:
         jets = filter( lambda j:j.muonEnergyFraction()<0.2, list(fwliteReader.event.jets) )
@@ -151,7 +146,7 @@ def filler( event ):
 
     # select tracks within a high-pt jet
     if jet and Z_cand:
-        our_tracks = sorted( filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':jet.phi(), 'eta':jet.eta()})<0.4**2, list(fwliteReader.event.gt) ), key = lambda t:-t.pt() )
+        our_tracks = sorted( filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':jet.phi(), 'eta':jet.eta()})<0.4**2, list(fwliteReader.event.pf)+list(fwliteReader.event.pflost) ), key = lambda t:-t.pt() )
         # print(our_tracks)
         # print(len(our_tracks))
         logger.debug( "Our tracks %i, pts: %r" %( len(our_tracks), [t.pt() for t in our_tracks]) )
@@ -159,8 +154,10 @@ def filler( event ):
             track = our_tracks[0]
             event.Track_pt, event.Track_eta, event.Track_phi, event.Track_charge = track.pt(), track.eta(), track.phi(), track.charge()
 
+        our_tracks.sort( key = lambda p:-p.pt() )
+
         pairs = []
-        for pair in itertools.combinations( list(our_tracks), 2):
+        for i_pair, pair in enumerate(itertools.combinations( list(our_tracks), 2)):
             if pair[0].charge()+pair[1].charge()!=0: continue
             if pair[0].charge()>pair[1].charge():
                 tp, tm = pair
@@ -176,17 +173,22 @@ def filler( event ):
             pair_dict.update( { 'tm_pt':tm.pt(), 'tm_eta':tm.eta(), 'tm_phi':tm.phi()})
             pair_dict.update( { 'pt':pair_p4.Pt(), 'eta':pair_p4.Eta(), 'phi':pair_p4.Phi(), 'mass':pair_p4.M()})
             pair_dict['deltaPhi'] = deltaPhi( pair_dict['tp_phi'], pair_dict['tm_phi'], returnAbs=False)
-<<<<<<< HEAD
             pair_dict['deltaEta'] = tp.eta()-tm.eta()
             pair_dict['isC']      = pair_dict['deltaPhi']>0
-=======
-            pair_dict['deltaEta'] = tp.eta()-tm.eta() 
-            pair_dict['isC']      = pair_dict['deltaPhi']>0 
->>>>>>> 4606d49d47fca7404ae90b755569b0f63af772b9
             pair_dict['isS']      = not pair_dict['isC']
+
+            rp = tp.pt()/(0.3*3.8) 
+            rm = tm.pt()/(0.3*3.8)
+
+            pair_dict['C_x'] = -2*rp*rm*(rp*cos(tp.phi())-rm*cos(tm.phi()))*sin(tp.phi()-tm.phi())/(rp**2+rm**2-2*rp*rm*cos(tp.phi()-tm.phi()))  
+            pair_dict['C_y'] = -2*rp*rm*(rp*sin(tp.phi())-rm*sin(tm.phi()))*sin(tp.phi()-tm.phi())/(rp**2+rm**2-2*rp*rm*cos(tp.phi()-tm.phi()))  
+
+            pair_dict['C_R']   = sqrt( pair_dict['C_x']**2 + pair_dict['C_y']**2 )
+            pair_dict['C_phi'] = atan2( pair_dict['C_y'], pair_dict['C_x'] )
+
             pairs.append( pair_dict )
 
-            if len(pairs)>=100: break
+            if i_pair>=100: break
 
         #if len(pairs)>0:
         #    print(pairs)
@@ -212,7 +214,7 @@ fwliteReader.start()
 
 counter = 0
 while fwliteReader.run():
-    logger.debug( "Evt: %i %i %i Number of Tracks: %i", fwliteReader.event.evt, fwliteReader.event.lumi, fwliteReader.event.run, fwliteReader.event.gt.size() )
+    logger.debug( "Evt: %i %i %i Number of Tracks: %i", fwliteReader.event.evt, fwliteReader.event.lumi, fwliteReader.event.run, fwliteReader.event.pf.size()+fwliteReader.event.pflost.size() )
 
     #maker.fill()
     success = filler( maker.event )

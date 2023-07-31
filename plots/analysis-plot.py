@@ -112,19 +112,13 @@ def profile_plot(eta_cut, jetPt_cut):
     ratio_pad.SetTopMargin(0.03)
     ratio_pad.SetBottomMargin(0.3)
     ratio_pad.Draw()
-    #h2 = h.Clone()
-    #h2.SetLineColor(ROOT.kViolet)
+
     r = ROOT.TRatioPlot(h, h1, "divsym")
-    #r = h.Clone()
-    #r.SetLineColor()
+
     r.SetGraphDrawOpt("EP")
     r.Draw()
     r.GetUpperPad().SetTitle("Profile")
 
-    # tex = ROOT.TLatex()
-    # tex.SetNDC()
-    # tex.SetTextSize(0.04)
-    # tex.SetTextAlign(11) # align right
 
     l = ROOT.TLegend(0.4,0.4,0.6,0.6)
     l.SetFillColor(0)
@@ -137,9 +131,8 @@ def profile_plot(eta_cut, jetPt_cut):
 
     l.AddEntry("h", tex.GetTitle(), "l")
     l.AddEntry("h1", tex1.GetTitle(), "l")
-    l.AddEntry(None, jetPtcut_tex.GetTitle(), "")#+"/"+args.jetPtmax, "")
-    #    l.AddEntry("h", " 2<#eta<3", "l")
-    #    l.AddEntry("h1", "-3<#eta<-2", "l")
+    l.AddEntry(None, jetPtcut_tex.GetTitle(), "")
+
     l.SetX1NDC(0.45)
     l.SetY1NDC(0.45)
     l.SetX2NDC(0.65)
@@ -160,27 +153,3 @@ def profile_plot(eta_cut, jetPt_cut):
 for i in eta_config_.keys():
     for j in cut_config_.keys():
         profile_plot(i,j)
-
-
-
-
-
-
-
-
-
-
-
-        # ev.Add("/scratch-cbe/users/robert.schoefbeck/JetTracking/nanoTuples/v2/miniAOD_Fall17/DYJetsToLL_M50_HT100to200_LO_ext1/*.root")
-        # ev.Add("/scratch-cbe/users/robert.schoefbeck/JetTracking/nanoTuples/v2/miniAOD_Fall17/DYJetsToLL_M50_HT1200to2500_LO/*.root")
-        # ev.Add("/scratch-cbe/users/robert.schoefbeck/JetTracking/nanoTuples/v2/miniAOD_Fall17/DYJetsToLL_M50_HT200to400_LO/*.root")
-        # ev.Add("/scratch-cbe/users/robert.schoefbeck/JetTracking/nanoTuples/v2/miniAOD_Fall17/DYJetsToLL_M50_HT200to400_LO_ext1/*.root")
-        # ev.Add("/scratch-cbe/users/robert.schoefbeck/JetTracking/nanoTuples/v2/miniAOD_Fall17/DYJetsToLL_M50_HT2500toInf_LO/*.root")
-        # ev.Add("/scratch-cbe/users/robert.schoefbeck/JetTracking/nanoTuples/v2/miniAOD_Fall17/DYJetsToLL_M50_HT400to600_LO/*.root")
-        # ev.Add("/scratch-cbe/users/robert.schoefbeck/JetTracking/nanoTuples/v2/miniAOD_Fall17/DYJetsToLL_M50_HT400to600_LO_ext1/*.root")
-        # ev.Add("/scratch-cbe/users/robert.schoefbeck/JetTracking/nanoTuples/v2/miniAOD_Fall17/DYJetsToLL_M50_HT600to800_LO/*.root")
-        # ev.Add("/scratch-cbe/users/robert.schoefbeck/JetTracking/nanoTuples/v2/miniAOD_Fall17/DYJetsToLL_M50_HT70to100_LO/*.root")
-        # ev.Add("/scratch-cbe/users/robert.schoefbeck/JetTracking/nanoTuples/v2/miniAOD_Fall17/DYJetsToLL_M50_HT800to1200_LO/*.root")
-        # ev.Add("/scratch-cbe/users/robert.schoefbeck/JetTracking/nanoTuples/v2/miniAOD_Fall17/DYJetsToLL_M50_LO/*.root")
-        # ev.Add("/scratch-cbe/users/robert.schoefbeck/JetTracking/nanoTuples/v2/miniAOD_Fall17/DYJetsToLL_M50_LO_ext1/*.root")
-        # ev.Add("/scratch-cbe/users/robert.schoefbeck/JetTracking/nanoTuples/v2/miniAOD_Fall17/DYJetsToLL_M50_NLO/*.root")

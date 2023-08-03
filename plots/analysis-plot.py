@@ -1,7 +1,6 @@
 import ROOT, os
 from array import array
 from math import pi
-import Analysis.Tools.syncer
 # from tttt.Tools.user import plot_directory
 from JetTracking.Tools.user import plot_directory
 from plot_configuration import fetch_configuration
@@ -12,9 +11,12 @@ argParser = argparse.ArgumentParser(description = "Argument parser")
 argParser.add_argument('--plot_directory', action='store', default='profilePlots')
 argParser.add_argument('--version', action='store', default=2)
 argParser.add_argument('--eta_cut', action='store', default='coarse')
-argParser.add_argument('--pt_cut', action='store', default='simple')
+argParser.add_argument('--simple_cut', action='store', default='pt')
+argParser.add_argument('--composite_cut', action='store', default=None)
 argParser.add_argument('--small', action='store_true')
 args = argParser.parse_args()
+
+import Analysis.Tools.syncer
 
 # Create chain
 ev = ROOT.TChain("Events")
@@ -29,7 +31,7 @@ else:
 
 if args.small: args.plot_directory += "_small"
 
-plot_directory_ = os.path.join(plot_directory, 'v'+args.version, args.plot_directory)
+plot_directory_ = os.path.join(plot_directory, 'v{}'.format(args.version), args.plot_directory)
 
 def merge_dict(dict1, dict2):
     dict3 = dict1.copy()
@@ -38,17 +40,28 @@ def merge_dict(dict1, dict2):
 
 config = fetch_configuration()
 
-if args.eta_cut == "coarse": eta_config_ = config["eta_cut_coarse"]
-elif args.eta_cut == "fine": eta_config_ = config["eta_cut_fine"]
+if args.eta_cut == "coarse":
+    eta_config_ = config["eta_cut_coarse"]
+elif args.eta_cut == "fine":
+    eta_config_ = config["eta_cut_fine"]
 
-if args.pt_cut == "simple": cut_config_ = config["Pair_pt_cut_simple"]
-elif args.pt_cut == "mass": cut_config_ = merge_dict(config["Pair_pt_cut_simple"], config["mass_dict"])
-print(cut_config_)
+plot_directory_ = os.path.join(plot_directory_, args.eta_cut)
+
+if args.simple_cut == "pt":         cut_config_ = config["Pair_pt_cut_simple"]
+elif args.simple_cut == "mass":     cut_config_ = config["mass_dict"]
+elif args.simple_cut == "r":        cut_config_ = config["r_dict"]
+
+if args.composite_cut == "mass":    cut_config_2_ = config["mass_dict"]
+elif args.composite_cut == "r":     cut_config_2_ = config["r_dict"]
+
+if args.composite_cut == None:
+    plot_directory_ = os.path.join(plot_directory_, args.simple_cut)
+else:
+    plot_directory_ = os.path.join(plot_directory_, args.simple_cut+"_"+args.composite_cut)
 
 
-ratio = "(Sum$(Pair_isC)/Sum$(Pair_isS))"
-
-def scatter_plot(ratio, variable, cut):
+# Scatter plot (useless)
+def scatter_plot(variable, cut):
 
     ratio = "(Sum$(Pair_isC)/Sum$(Pair_isS))"
     c = ROOT.TCanvas( 'c', 'c', 200, 10, 700, 500 )
@@ -65,9 +78,7 @@ def scatter_plot(ratio, variable, cut):
         c.Print("RatioVs"+var+".pdf")
 
 # Create profile plots
-
-
-def profile_plot(eta_cut, jetPt_cut):
+def profile_plot(eta_cut, cut1, cut2=None):
 
     ratio = "(Sum$(Pair_isC)/Sum$(Pair_isS))"
     c = ROOT.TCanvas( 'c', 'c', 200, 10, 700, 500 )
@@ -79,7 +90,10 @@ def profile_plot(eta_cut, jetPt_cut):
     p.GetYaxis().SetTitle("Cowboys/Seagulls")
     ROOT.gStyle.SetOptStat(0)
 
-    ev.Draw(ratio+":Pair_phi>>p", eta_config_[eta_cut]["plus"]["cut"]+"&&"+cut_config_[jetPt_cut]["cut"])
+    if cut2 is None:
+        ev.Draw(ratio+":Pair_phi>>p", eta_config_[eta_cut]["plus"]["cut"]+"&&"+cut_config_[cut1]["cut"])
+    else:
+        ev.Draw(ratio+":Pair_phi>>p", eta_config_[eta_cut]["plus"]["cut"]+"&&"+cut_config_[cut1]["cut"]+"&&"+cut_config_2_[cut2]["cut"])
     p.GetYaxis().SetRangeUser(0,2.5)
 
     h = ROOT.TH1D("h", "h", 10, 0, 100)
@@ -94,7 +108,10 @@ def profile_plot(eta_cut, jetPt_cut):
     h.Draw("E")
 
     h1 = ROOT.TH1D("h1", "h1", 10, 0, 100)
-    ev.Draw(ratio+":Pair_phi>>p1", eta_config_[eta_cut]["minus"]["cut"]+"&&"+cut_config_[jetPt_cut]["cut"])
+    if cut2 is None:
+        ev.Draw(ratio+":Pair_phi>>p1", eta_config_[eta_cut]["minus"]["cut"]+"&&"+cut_config_[cut1]["cut"])
+    else:
+        ev.Draw(ratio+":Pair_phi>>p1", eta_config_[eta_cut]["minus"]["cut"]+"&&"+cut_config_[cut1]["cut"]+"&&"+cut_config_2_[cut2]["cut"])
     h1 = p1.ProjectionX()
 
     for i in range(1, h1.GetNbinsX()+1):
@@ -127,11 +144,14 @@ def profile_plot(eta_cut, jetPt_cut):
 
     tex = ROOT.TLatex(0, 0, eta_config_[eta_cut]["plus"]["legend"])
     tex1 = ROOT.TLatex(0, 0, eta_config_[eta_cut]["minus"]["legend"])
-    jetPtcut_tex =  ROOT.TLatex(0, 0, cut_config_[jetPt_cut]["legend"])
-
+    if cut2 is None:
+        cut_tex1 =  ROOT.TLatex(0, 0, cut_config_[cut1]["legend"])
+    else:
+        cut_tex1 =  ROOT.TLatex(0, 0, cut_config_[cut1]["legend"])
+        cut_tex1 =  ROOT.TLatex(0, 0, cut_config_2_[cut2]["legend"])
     l.AddEntry("h", tex.GetTitle(), "l")
     l.AddEntry("h1", tex1.GetTitle(), "l")
-    l.AddEntry(None, jetPtcut_tex.GetTitle(), "")
+    l.AddEntry(None, cut_tex1.GetTitle(), "")
 
     l.SetX1NDC(0.45)
     l.SetY1NDC(0.45)
@@ -147,9 +167,17 @@ def profile_plot(eta_cut, jetPt_cut):
 
     format = ['pdf', 'png']
     for f in format:
-        c.Print(plot_directory_+"/"+eta_cut+"_"+jetPt_cut+"."+f)#+args.jetPtmax+".pdf")
+        if cut2 is None:
+            c.Print(plot_directory_+"/"+eta_cut+"_"+cut1+"."+f)
+        else:
+            c.Print(plot_directory_+"/"+eta_cut+"_"+cut1+"_"+cut2+"."+f)
 
-
-for i in eta_config_.keys():
-    for j in cut_config_.keys():
-        profile_plot(i,j)
+if args.composite_cut == None:
+    for i in eta_config_.keys():
+        for j in cut_config_.keys():
+            profile_plot(i,j, None)
+else:
+    for i in eta_config_.keys():
+        for j in cut_config_.keys():
+            for k in cut_config_2_.keys():
+                profile_plot(i,j,k)

@@ -34,8 +34,8 @@ def fetch_configuration():
                          "legend":  "0 < #sqrt{M} < 1"},
         "mass_12": {"cut":     "sqrt((2*Pair_tp_pt*Pair_tm_pt*(cosh(Pair_tp_eta-Pair_tm_eta) - cos(Pair_tp_phi-Pair_tm_phi))))>=1&&sqrt((2*Pair_tp_pt*Pair_tm_pt*(cosh(Pair_tp_eta-Pair_tm_eta) - cos(Pair_tp_phi-Pair_tm_phi))))<(2)",
                          "legend":  "1 < #sqrt{M} < 2"},
-        "mass_25": {"cut":     "sqrt((2*Pair_tp_pt*Pair_tm_pt*(cosh(Pair_tp_eta-Pair_tm_eta) - cos(Pair_tp_phi-Pair_tm_phi))))>(2)&&sqrt((2*Pair_tp_pt*Pair_tm_pt*(cosh(Pair_tp_eta-Pair_tm_eta) - cos(Pair_tp_phi-Pair_tm_phi)))<(5)",
-                         "legend":  "2 < #sqrt{M} < 2"}}
+        "mass_25": {"cut":     "sqrt((2*Pair_tp_pt*Pair_tm_pt*(cosh(Pair_tp_eta-Pair_tm_eta) - cos(Pair_tp_phi-Pair_tm_phi))))>(2)&&sqrt((2*Pair_tp_pt*Pair_tm_pt*(cosh(Pair_tp_eta-Pair_tm_eta) - cos(Pair_tp_phi-Pair_tm_phi))))<(5)",
+                         "legend":  "2 < #sqrt{M} < 5"}}
 
     r_cut_dict = {
         "Pair_C_R_10":      {"cut":         "Pair_C_R<10",                  "legend":      "0 < r < 10"},

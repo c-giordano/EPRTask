@@ -54,7 +54,7 @@ elif args.simple_cut == "jetPt":    cut_config_ = config["Jet_pt_dict"]
 
 if args.composite_cut == "mass":    cut_config_2_ = config["mass_dict"]
 elif args.composite_cut == "r":     cut_config_2_ = config["r_dict"]
-elif args.composite_cut == "jetPt":    cut_config_ = config["Jet_pt_dict"]
+elif args.composite_cut == "jetPt":    cut_config_2_ = config["Jet_pt_dict"]
 
 if args.composite_cut == None:
     plot_directory_ = os.path.join(plot_directory_, args.simple_cut)

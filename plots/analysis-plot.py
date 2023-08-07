@@ -50,9 +50,11 @@ plot_directory_ = os.path.join(plot_directory_, args.eta_cut)
 if args.simple_cut == "pt":         cut_config_ = config["Pair_pt_cut_simple"]
 elif args.simple_cut == "mass":     cut_config_ = config["mass_dict"]
 elif args.simple_cut == "r":        cut_config_ = config["r_dict"]
+elif args.simple_cut == "jetPt":    cut_config_ = config["Jet_pt_dict"]
 
 if args.composite_cut == "mass":    cut_config_2_ = config["mass_dict"]
 elif args.composite_cut == "r":     cut_config_2_ = config["r_dict"]
+elif args.composite_cut == "jetPt":    cut_config_ = config["Jet_pt_dict"]
 
 if args.composite_cut == None:
     plot_directory_ = os.path.join(plot_directory_, args.simple_cut)
@@ -140,7 +142,7 @@ def profile_plot(eta_cut, cut1, cut2=None):
     l = ROOT.TLegend(0.4,0.4,0.6,0.6)
     l.SetFillColor(0)
     l.SetBorderSize(0)
-    l.SetTextSize(0.04)
+    l.SetTextSize(0.03)
 
     tex = ROOT.TLatex(0, 0, eta_config_[eta_cut]["plus"]["legend"])
     tex1 = ROOT.TLatex(0, 0, eta_config_[eta_cut]["minus"]["legend"])
@@ -148,11 +150,14 @@ def profile_plot(eta_cut, cut1, cut2=None):
         cut_tex1 =  ROOT.TLatex(0, 0, cut_config_[cut1]["legend"])
     else:
         cut_tex1 =  ROOT.TLatex(0, 0, cut_config_[cut1]["legend"])
-        cut_tex1 =  ROOT.TLatex(0, 0, cut_config_2_[cut2]["legend"])
+        cut_tex2 =  ROOT.TLatex(0, 0, cut_config_2_[cut2]["legend"])
     l.AddEntry("h", tex.GetTitle(), "l")
     l.AddEntry("h1", tex1.GetTitle(), "l")
-    l.AddEntry(None, cut_tex1.GetTitle(), "")
-
+    if cut2 is None:
+        l.AddEntry(None, cut_tex1.GetTitle(), "")
+    else:
+        l.AddEntry(None, cut_tex1.GetTitle(), "")
+        l.AddEntry(None, cut_tex2.GetTitle(), "")
     l.SetX1NDC(0.45)
     l.SetY1NDC(0.45)
     l.SetX2NDC(0.65)

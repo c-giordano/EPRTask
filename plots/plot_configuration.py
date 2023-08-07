@@ -43,5 +43,11 @@ def fetch_configuration():
         "Pair_C_R_20to40":  {"cut":         "Pair_C_R>20&&Pair_C_R<40",     "legend":      " 20 < r < 40"},
         "Pair_C_R_40":      {"cut":         "Pair_C_R>40",                  "legend":      "r > 40"}}
 
+    Jet_pt_dict = {
+        "Jet_pt_20":        {"cut":         "Jet_pt<20",                    "legend":      "p_{T, Jet} < 20"},
+        "Jet_pt_20to40":    {"cut":         "Jet_pt>=20&&Jet_pt<40",        "legend":      "20 < p_{T, Jet} <40"},
+        "Jet_pt_40to60":    {"cut":         "Jet_pt>=40&&Jet_pt<60",        "legend":      "40 < p_{T, Jet} <60"},
+        "Jet_pt_60":        {"cut":         "Jet_pt>=60",                   "legend":      "p_{T, Jet} > 60"}}
 
-    return {"eta_cut_coarse":eta_cut_dict_coarse,"eta_cut_fine":eta_cut_dict_fine, "Pair_pt_cut_simple":Pair_pt_cut_dict, "mass_dict": mass_dict, "r_dict": r_cut_dict}
+
+    return {"eta_cut_coarse":eta_cut_dict_coarse,"eta_cut_fine":eta_cut_dict_fine, "Pair_pt_cut_simple":Pair_pt_cut_dict, "mass_dict": mass_dict, "r_dict": r_cut_dict, "Jet_pt_dict": Jet_pt_dict}

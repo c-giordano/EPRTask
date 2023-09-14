@@ -98,9 +98,9 @@ pairVars = "pt/F,eta/F,phi/F,mass/F,deltaPhi/F,deltaEta/F,isC/I,isS/I,tp_pt/F,tp
 variables = [
      "Pair[%s]"%pairVars,
      "evt/l", "run/I", "lumi/I",
-     "Jet_pt/F", "Jet_eta/F", "Jet_phi/F",
+     "Jet_pt/F", "Jet_eta/F", "Jet_phi/F", "Jet_nTrack/I",
      "Z_pt/F", "Z_eta/F", "Z_phi/F", "Z_mass/F", "Z_l_pdgId/I",
-     "Track_pt/F", "Track_eta/F", "Track_phi/F", "Track_charge/I"
+     "Track[pt/F,eta/F,phi/F,charge/I]"
     ]
 pairVarNames = list( map( lambda p:p.split('/')[0], pairVars.split(',') ))
 fwliteReader = sample.fwliteReader( products = products )
@@ -147,14 +147,14 @@ def filler( event ):
     # select tracks within a high-pt jet
     if jet and Z_cand:
         our_tracks = sorted( filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':jet.phi(), 'eta':jet.eta()})<0.4**2, list(fwliteReader.event.pf)+list(fwliteReader.event.pflost) ), key = lambda t:-t.pt() )
-        # print(our_tracks)
-        # print(len(our_tracks))
         logger.debug( "Our tracks %i, pts: %r" %( len(our_tracks), [t.pt() for t in our_tracks]) )
-        if len(our_tracks)>0:
-            track = our_tracks[0]
-            event.Track_pt, event.Track_eta, event.Track_phi, event.Track_charge = track.pt(), track.eta(), track.phi(), track.charge()
+        event.Jet_nTrack = len(our_tracks) 
+        #if len(our_tracks)>0:
+        #    track = our_tracks[0]
+        #    event.Track_pt, event.Track_eta, event.Track_phi, event.Track_charge = track.pt(), track.eta(), track.phi(), track.charge()
 
-        our_tracks.sort( key = lambda p:-p.pt() )
+        #our_tracks.sort( key = lambda p:-p.pt() )
+        fill_vector_collection( event, "Track", ['pt', 'eta', 'phi', 'charge'], [ {'pt':t.pt(), 'phi':t.phi(), 'eta':t.eta(), 'charge':t.charge()} for t in our_tracks])
 
         pairs = []
         for i_pair, pair in enumerate(itertools.combinations( list(our_tracks), 2)):

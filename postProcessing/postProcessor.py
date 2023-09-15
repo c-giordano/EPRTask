@@ -100,7 +100,7 @@ variables = [
      "evt/l", "run/I", "lumi/I",
      "Jet_pt/F", "Jet_eta/F", "Jet_phi/F", "Jet_nTrack/I",
      "Z_pt/F", "Z_eta/F", "Z_phi/F", "Z_mass/F", "Z_l_pdgId/I",
-     "Track[pt/F,eta/F,phi/F,charge/I]"
+     "Track[pt/F,eta/F,phi/F,charge/I, pdgId/I]"
     ]
 pairVarNames = list( map( lambda p:p.split('/')[0], pairVars.split(',') ))
 fwliteReader = sample.fwliteReader( products = products )
@@ -146,19 +146,20 @@ def filler( event ):
 
     # select tracks within a high-pt jet
     if jet and Z_cand:
-        our_tracks = sorted( filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':jet.phi(), 'eta':jet.eta()})<0.4**2, list(fwliteReader.event.pf)+list(fwliteReader.event.pflost) ), key = lambda t:-t.pt() )
+        our_tracks = sorted( filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':jet.phi(), 'eta':jet.eta()})<0.4**2 and abs(t.pdgId())==211, list(fwliteReader.event.pf)+list(fwliteReader.event.pflost) ), key = lambda t:-t.pt() )
         logger.debug( "Our tracks %i, pts: %r" %( len(our_tracks), [t.pt() for t in our_tracks]) )
-        event.Jet_nTrack = len(our_tracks) 
+        event.Jet_nTrack = len(our_tracks)
         #if len(our_tracks)>0:
         #    track = our_tracks[0]
         #    event.Track_pt, event.Track_eta, event.Track_phi, event.Track_charge = track.pt(), track.eta(), track.phi(), track.charge()
 
         #our_tracks.sort( key = lambda p:-p.pt() )
-        fill_vector_collection( event, "Track", ['pt', 'eta', 'phi', 'charge'], [ {'pt':t.pt(), 'phi':t.phi(), 'eta':t.eta(), 'charge':t.charge()} for t in our_tracks])
+        fill_vector_collection( event, "Track", ['pt', 'eta', 'phi', 'charge', 'pdgId'], [ {'pt':t.pt(), 'phi':t.phi(), 'eta':t.eta(), 'charge':t.charge(), 'pdgId':t.pdgId()} for t in our_tracks])
+        # print(event.Track_charge[0], event.Track_pdgId[0])
 
         pairs = []
         for i_pair, pair in enumerate(itertools.combinations( list(our_tracks), 2)):
-            if pair[0].charge()+pair[1].charge()!=0: continue
+            if pair[0].charge()+pair[1].charge()>=5: continue
             if pair[0].charge()>pair[1].charge():
                 tp, tm = pair
             else:
@@ -177,11 +178,11 @@ def filler( event ):
             pair_dict['isC']      = pair_dict['deltaPhi']>0
             pair_dict['isS']      = not pair_dict['isC']
 
-            rp = tp.pt()/(0.3*3.8) 
+            rp = tp.pt()/(0.3*3.8)
             rm = tm.pt()/(0.3*3.8)
 
-            pair_dict['C_x'] = -2*rp*rm*(rp*cos(tp.phi())-rm*cos(tm.phi()))*sin(tp.phi()-tm.phi())/(rp**2+rm**2-2*rp*rm*cos(tp.phi()-tm.phi()))  
-            pair_dict['C_y'] = -2*rp*rm*(rp*sin(tp.phi())-rm*sin(tm.phi()))*sin(tp.phi()-tm.phi())/(rp**2+rm**2-2*rp*rm*cos(tp.phi()-tm.phi()))  
+            pair_dict['C_x'] = -2*rp*rm*(rp*cos(tp.phi())-rm*cos(tm.phi()))*sin(tp.phi()-tm.phi())/(rp**2+rm**2-2*rp*rm*cos(tp.phi()-tm.phi()))
+            pair_dict['C_y'] = -2*rp*rm*(rp*sin(tp.phi())-rm*sin(tm.phi()))*sin(tp.phi()-tm.phi())/(rp**2+rm**2-2*rp*rm*cos(tp.phi()-tm.phi()))
 
             pair_dict['C_R']   = sqrt( pair_dict['C_x']**2 + pair_dict['C_y']**2 )
             pair_dict['C_phi'] = atan2( pair_dict['C_y'], pair_dict['C_x'] )

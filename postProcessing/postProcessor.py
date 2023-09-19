@@ -24,14 +24,13 @@ argParser.add_argument('--nJobs',              action='store',      nargs='?', t
 argParser.add_argument('--job',                action='store',      nargs='?', type=int, default=0,  help="Run only job i")
 argParser.add_argument('--targetDir',          action='store',      default='v2')
 argParser.add_argument('--small',              action='store_true', help='Run only on a small subset of the data?')#, default = True)
+argParser.add_argument('--maxNPairs',          action='store', type=int, default=100, help='Maximum number of pairs.')#, default = True)
 argParser.add_argument('--overwrite',          action='store_true', help='Overwrite?')#, default = True)
 argParser.add_argument('--copy_input',         action='store_true', help='xrdcp input file?')#, default = True)
 args = argParser.parse_args()
 
 ## some hard-coded steering variables
 #minPairPt = 2
-#maxNPairs = 10
-## change back to 100 """""
 
 import JetTracking.Tools.logger as _logger
 logger    = _logger.get_logger( args.logLevel, logFile = None )
@@ -108,7 +107,8 @@ variables = [
 pairVarNames = list( map( lambda p:p.split('/')[0], pairVars.split(',') ))
 fwliteReader = sample.fwliteReader( products = products )
 
-def fill_vector_collection( event, collection_name, collection_varnames, objects, maxN = 100):
+def fill_vector_collection( event, collection_name, collection_varnames, objects, maxN = args.maxNPairs):
+    objects = objects[:maxN]
     setattr( event, "n"+collection_name, len(objects) )
     for i_obj, obj in enumerate(objects[:maxN]):
         for var in collection_varnames:
@@ -182,6 +182,7 @@ def filler( event ):
             tp_p4 = ROOT.Math.PtEtaPhiMVector(tp.pt(), tp.eta(), tp.phi(), 0)
             tm_p4 = ROOT.Math.PtEtaPhiMVector(tm.pt(), tm.eta(), tm.phi(), 0)
             pair_p4 = tp_p4 + tm_p4
+
             # require minimum pt & OS pairs
             #if not pair_p4.pt()>minPairPt: continue
             # if tp.pt() > tm.pt():
@@ -214,12 +215,8 @@ def filler( event ):
             pair_dict['C_phi'] = atan2( pair_dict['C_y'], pair_dict['C_x'] )
 
             pairs.append( pair_dict )
-            # print("After append")
-            # print(pairs)
-
-            #if i_pair>=100: break
-
-            #if i_pair>=maxNPairs: break
+            if len(pairs)>args.maxNpairs:
+                break
 
         # print("Out of loop")
         # print(pairs)

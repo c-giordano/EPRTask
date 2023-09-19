@@ -38,6 +38,7 @@ logger_rt = _logger_rt.get_logger(args.logLevel, logFile = None)
 
 exec("import JetTracking.samples.%s as samples"%args.sampleFile)
 sample = getattr( samples, args.sample )
+logger.info( "Loaded sample %s from %s" %(args.sample, args.sampleFile) )
 
 # Define & create output directory
 output_directory = os.path.join(user.postprocessing_output_directory, args.targetDir, args.sampleFile, sample.name)
@@ -94,13 +95,13 @@ products = {
 
 
 # define tree maker
-pairVars = "pt/F,eta/F,phi/F,mass/F,deltaPhi/F,deltaEta/F,isC/I,isS/I,tp_pt/F,tp_eta/F,tp_phi/F,tm_pt/F,tm_eta/F,tm_phi/F,C_x/F,C_y/F,C_R/F,C_phi/F"
+pairVars = "pt/F,eta/F,phi/F,mass/F,deltaPhi/F,deltaEta/F,isC/I,isS/I,tp_pt/F,tp_eta/F,tp_phi/F,tm_pt/F,tm_eta/F,tm_phi/F,tp_charge/I,tp_index/I,tm_charge/I,tm_index/I,C_x/F,C_y/F,C_R/F,C_phi/F"
 variables = [
      "Pair[%s]"%pairVars,
      "evt/l", "run/I", "lumi/I",
      "Jet_pt/F", "Jet_eta/F", "Jet_phi/F", "Jet_nTrack/I",
      "Z_pt/F", "Z_eta/F", "Z_phi/F", "Z_mass/F", "Z_l_pdgId/I",
-     "Track[pt/F,eta/F,phi/F,charge/I, pdgId/I]"
+     "Track[pt/F,eta/F,phi/F,charge/I, pdgId/I, index/I]"
     ]
 pairVarNames = list( map( lambda p:p.split('/')[0], pairVars.split(',') ))
 fwliteReader = sample.fwliteReader( products = products )
@@ -148,6 +149,10 @@ def filler( event ):
     if jet and Z_cand:
         our_tracks = sorted( filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':jet.phi(), 'eta':jet.eta()})<0.4**2 and abs(t.pdgId())==211, list(fwliteReader.event.pf)+list(fwliteReader.event.pflost) ), key = lambda t:-t.pt() )
         logger.debug( "Our tracks %i, pts: %r" %( len(our_tracks), [t.pt() for t in our_tracks]) )
+
+        for i_t, t in enumerate(our_tracks):
+            t.index = i_t
+
         event.Jet_nTrack = len(our_tracks)
         #if len(our_tracks)>0:
         #    track = our_tracks[0]
@@ -159,7 +164,7 @@ def filler( event ):
 
         pairs = []
         for i_pair, pair in enumerate(itertools.combinations( list(our_tracks), 2)):
-            if pair[0].charge()+pair[1].charge()>=5: continue
+            if pair[0].charge()+pair[1].charge()!=0: continue
             if pair[0].charge()>pair[1].charge():
                 tp, tm = pair
             else:
@@ -170,7 +175,7 @@ def filler( event ):
             # require minimum pt & OS pairs
             if not pair_p4.pt()>minPairPt: continue
 
-            pair_dict = { 'tp_pt':tp.pt(), 'tp_eta':tp.eta(), 'tp_phi':tp.phi() }
+            pair_dict = { 'tp_pt':tp.pt(), 'tp_eta':tp.eta(), 'tp_phi':tp.phi(), 'tp_index':tp.index, 'tm_index':tm.index, 'tp_charge':tp.charge(), 'tm_charge':tm.charge()}
             pair_dict.update( { 'tm_pt':tm.pt(), 'tm_eta':tm.eta(), 'tm_phi':tm.phi()})
             pair_dict.update( { 'pt':pair_p4.Pt(), 'eta':pair_p4.Eta(), 'phi':pair_p4.Phi(), 'mass':pair_p4.M()})
             pair_dict['deltaPhi'] = deltaPhi( pair_dict['tp_phi'], pair_dict['tm_phi'], returnAbs=False)
@@ -192,8 +197,10 @@ def filler( event ):
             if i_pair>=100: break
 
         #if len(pairs)>0:
-        #    print(pairs)
-
+        #    for pair in pairs:
+        #        print(" ".join( [ "%5s = %4.3f"%(key, val) for key, val in sorted(list(pair.items()), key=(lambda p:p[0])) ] ))
+        #    #print(pairs)
+        #print("len pairs:", len(pairs))
         fill_vector_collection( event, "Pair", pairVarNames, pairs)
 
     # We need to report success, because we fill only if we have found pairs

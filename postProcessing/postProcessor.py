@@ -30,6 +30,8 @@ args = argParser.parse_args()
 
 # some hard-coded steering variables
 minPairPt = 2
+maxNPairs = 10
+# change back to 100 """""
 
 import JetTracking.Tools.logger as _logger
 logger    = _logger.get_logger( args.logLevel, logFile = None )
@@ -146,8 +148,12 @@ def filler( event ):
 
     # select tracks within a high-pt jet
     if jet and Z_cand:
+
+        # print(sqrt(deltaR2({'phi':event.Jet_phi, 'eta':event.Jet_eta}, {'phi':event.Z_phi, 'eta':event.Z_eta})))
+
         our_tracks = sorted( filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':jet.phi(), 'eta':jet.eta()})<0.4**2 and abs(t.pdgId())==211, list(fwliteReader.event.pf)+list(fwliteReader.event.pflost) ), key = lambda t:-t.pt() )
         logger.debug( "Our tracks %i, pts: %r" %( len(our_tracks), [t.pt() for t in our_tracks]) )
+        print("Our tracks %i, pts: %r" %( len(our_tracks), [t.pt() for t in our_tracks]))
         event.Jet_nTrack = len(our_tracks)
         #if len(our_tracks)>0:
         #    track = our_tracks[0]
@@ -157,22 +163,40 @@ def filler( event ):
         fill_vector_collection( event, "Track", ['pt', 'eta', 'phi', 'charge', 'pdgId'], [ {'pt':t.pt(), 'phi':t.phi(), 'eta':t.eta(), 'charge':t.charge(), 'pdgId':t.pdgId()} for t in our_tracks])
         # print(event.Track_charge[0], event.Track_pdgId[0])
 
+
         pairs = []
         for i_pair, pair in enumerate(itertools.combinations( list(our_tracks), 2)):
-            if pair[0].charge()+pair[1].charge()>=5: continue
+            if pair[0].charge()+pair[1].charge()!=0: continue
+            # if pair[0].charge()==0: print("OILLOC")
             if pair[0].charge()>pair[1].charge():
                 tp, tm = pair
+                # print(pair[0].charge(), pair[1].charge(), "p/m")
+                # print("sum =", pair[0].charge()+pair[1].charge())
             else:
                 tm, tp = pair
+                # print(pair[0].charge(), pair[1].charge(), "m/p")
+                # print("sum =", pair[0].charge()+pair[1].charge())
+
             tp_p4 = ROOT.Math.PtEtaPhiMVector(tp.pt(), tp.eta(), tp.phi(), 0)
             tm_p4 = ROOT.Math.PtEtaPhiMVector(tm.pt(), tm.eta(), tm.phi(), 0)
             pair_p4 = tp_p4 + tm_p4
             # require minimum pt & OS pairs
             if not pair_p4.pt()>minPairPt: continue
+            # if tp.pt() > tm.pt():
+            #     print("+>-")
+            # else:
+            #     print("+<-")
+            #
+            # print("p/m pts", tp.pt(), tm.pt())
+            #
+            # print("Pair_pt", pair_p4.pt())
+
 
             pair_dict = { 'tp_pt':tp.pt(), 'tp_eta':tp.eta(), 'tp_phi':tp.phi() }
             pair_dict.update( { 'tm_pt':tm.pt(), 'tm_eta':tm.eta(), 'tm_phi':tm.phi()})
             pair_dict.update( { 'pt':pair_p4.Pt(), 'eta':pair_p4.Eta(), 'phi':pair_p4.Phi(), 'mass':pair_p4.M()})
+            # print("During update")
+            # print(pair_dict)
             pair_dict['deltaPhi'] = deltaPhi( pair_dict['tp_phi'], pair_dict['tm_phi'], returnAbs=False)
             pair_dict['deltaEta'] = tp.eta()-tm.eta()
             pair_dict['isC']      = pair_dict['deltaPhi']>0
@@ -188,12 +212,13 @@ def filler( event ):
             pair_dict['C_phi'] = atan2( pair_dict['C_y'], pair_dict['C_x'] )
 
             pairs.append( pair_dict )
+            # print("After append")
+            # print(pairs)
 
-            if i_pair>=100: break
+            if i_pair>=maxNPairs: break
 
-        #if len(pairs)>0:
-        #    print(pairs)
-
+        # print("Out of loop")
+        # print(pairs)
         fill_vector_collection( event, "Pair", pairVarNames, pairs)
 
     # We need to report success, because we fill only if we have found pairs

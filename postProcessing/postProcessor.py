@@ -215,7 +215,7 @@ def filler( event ):
             pair_dict['C_phi'] = atan2( pair_dict['C_y'], pair_dict['C_x'] )
 
             pairs.append( pair_dict )
-            if len(pairs)>args.maxNpairs:
+            if len(pairs)>args.maxNPairs:
                 break
 
         # print("Out of loop")

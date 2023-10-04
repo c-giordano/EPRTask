@@ -157,7 +157,6 @@ def filler( event ):
         our_tracks_ = jet.getJetConstituents()
         if not our_tracks_.size()>0: return
 
-
         our_tracks = filter( lambda t:  abs(t.pdgId())==211, our_tracks_ )
         our_tracks.sort( key = lambda p:-p.pt() )
 

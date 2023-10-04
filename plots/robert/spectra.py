@@ -12,7 +12,7 @@ import Analysis.Tools.user as user
 import argparse
 argParser = argparse.ArgumentParser(description = "Argument parser")
 argParser.add_argument('--logLevel',           action='store',      default='INFO', nargs='?', choices=['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG', 'TRACE', 'NOTSET'], help="Log level for logging")
-argParser.add_argument('--plot_directory',     action='store',      default='JetTracking/v3')
+argParser.add_argument('--plot_directory',     action='store',      default='JetTracking/v4')
 #argParser.add_argument('--selection',          action='store',      default=None)
 argParser.add_argument('--sample',             action='store',      default='DYJetsToLL_M50_LO',)
 argParser.add_argument('--small',                                   action='store_true',     help='Run only on a small subset of the data?')
@@ -30,7 +30,7 @@ if args.small:
 preselection = "Jet_pt>100"
 
 # 1D Jet & pair kinematics
-if True:
+if False:
     plot_cfg = {
         'Jet_pt': {'var':'Jet_pt', 'binning':[30, 100, 1500], 'texX':"p_{T}(jet) (GeV)"},
         'Jet_eta':{'var':'Jet_eta', 'binning':[30, -3, 3], 'texX':"#eta(jet)"},
@@ -39,7 +39,9 @@ if True:
         'Pair_pt':{'var':'Pair_pt', 'binning':[30, 0, 1500], 'texX':"p_{T}(pair) (GeV)"},
         'Pair_eta':{'var':'Pair_eta', 'binning':[30, -3, 3], 'texX':"#eta(pair)"},
         'Pair_phi':{'var':'Pair_phi', 'binning':[30, -math.pi, math.pi], 'texX':"#phi(pair)"},
-
+        
+        'Pair_C_R':{'var':'Pair_C_R', 'binning':[50, 0, 0.4], 'texX':"R(C) (m)"},
+        'Pair_C_phi':{'var':'Pair_C_phi', 'binning':[30, -math.pi, math.pi], 'texX':"#phi(C)"},
 
         'Pair_deltaPhi':{'var':'Pair_deltaPhi', 'binning':[30, -3, 3], 'texX':"#Delta#eta(pair)"},
         'Pair_deltaEta':{'var':'Pair_deltaEta', 'binning':[30, -math.pi, math.pi], 'texX':"#Delta#phi(pair)"},
@@ -72,7 +74,7 @@ if False:
                 extensions=["png"], copyIndexPHP=True) 
     syncer.sync()
 
-# slices 
+# slices in phi 
 if False:
 
     slices = [ {'window':(math.pi*(-1+i/3.), math.pi*(-1+(i+1)/3.) ) } for i in range(6) ] 
@@ -82,6 +84,9 @@ if False:
         'Pair_pt_low':{'var':'Pair_pt', 'binning':[30, 0, 100], 'texX':"p_{T}(pair) (GeV)"},
         'Pair_eta':{'var':'Pair_eta', 'binning':[30, -3, 3], 'texX':"#eta(pair)"},
         'Pair_phi':{'var':'Pair_phi', 'binning':[30, -math.pi, math.pi], 'texX':"#phi(pair)"},
+
+        'Pair_C_R':{'var':'Pair_C_R', 'binning':[50, 0, 0.4], 'texX':"R(C) (m)"},
+        'Pair_C_phi':{'var':'Pair_C_phi', 'binning':[30, -math.pi, math.pi], 'texX':"#phi(C)"},
 
         'Pair_tm_pt':{'var':'Pair_tm_pt', 'binning':[30, 0, 500], 'texX':"p_{T}(tm) (GeV)"},
         'Pair_tm_pt_low':{'var':'Pair_tm_pt', 'binning':[30, 0, 50], 'texX':"p_{T}(tm) (GeV)"},
@@ -98,6 +103,7 @@ if False:
     for name, p in plot_cfg.items():
         print "At " + name
         h_inc = sample.get1DHistoFromDraw(p['var'], p['binning'], selectionString = preselection)
+        h_inc.SetMarkerStyle( 0 )
         h_inc.legendText = "inclusive"
 
         h_slice = {}
@@ -105,8 +111,60 @@ if False:
             h_slice[slice_['window']] = sample.get1DHistoFromDraw(p['var'], p['binning'], selectionString = preselection+"&&Pair_phi>=%f&&Pair_phi<%f"%(slice_['window']))
             h_slice[slice_['window']].legendText = "%3.2f #leq #phi(Pair) < %3.2f" % slice_['window']
             h_slice[slice_['window']].SetLineColor( colors[i_slice_] )
+            h_slice[slice_['window']].SetMarkerColor( colors[i_slice_] )
+            h_slice[slice_['window']].SetMarkerStyle( 0 )
             
         plots.append( Plot.fromHisto( name+"_sliced", [[h_inc]] + [ [h_slice[slice_['window']]] for slice_ in slices], texX = p['texX'] ) )
+
+    for logY in [False, True]:
+        for p in plots: 
+            plotting.draw( p, 
+                plot_directory = os.path.join( user.plot_directory, args.plot_directory, "inclusive", ("log" if logY else "lin")), 
+                yRange = "auto", extensions=["png"], copyIndexPHP=True) 
+
+    syncer.sync()
+
+# seagulls vs. cowboys 
+if True:
+
+    slices = [ {'sel':'(1)', 'name':'inclusive'}, {'sel':'Pair_isC', 'name':'cowboy'}, {'sel':'Pair_isS', 'name':'seagull'} ] 
+    colors = [ROOT.kBlue, ROOT.kRed, ROOT.kMagenta, ROOT.kGreen, ROOT.kPink, ROOT.kCyan]
+    plot_cfg = {
+        'Pair_pt':{'var':'Pair_pt', 'binning':[30, 0, 1500], 'texX':"p_{T}(pair) (GeV)"},
+        'Pair_pt_low':{'var':'Pair_pt', 'binning':[30, 0, 100], 'texX':"p_{T}(pair) (GeV)"},
+        'Pair_eta':{'var':'Pair_eta', 'binning':[30, -3, 3], 'texX':"#eta(pair)"},
+        'Pair_phi':{'var':'Pair_phi', 'binning':[30, -math.pi, math.pi], 'texX':"#phi(pair)"},
+
+        'Pair_C_R':{'var':'Pair_C_R', 'binning':[50, 0, 0.4], 'texX':"R(C) (m)"},
+        'Pair_C_phi':{'var':'Pair_C_phi', 'binning':[30, -math.pi, math.pi], 'texX':"#phi(C)"},
+
+        'Pair_tm_pt':{'var':'Pair_tm_pt', 'binning':[30, 0, 500], 'texX':"p_{T}(tm) (GeV)"},
+        'Pair_tm_pt_low':{'var':'Pair_tm_pt', 'binning':[30, 0, 50], 'texX':"p_{T}(tm) (GeV)"},
+        'Pair_tm_eta':{'var':'Pair_tm_eta', 'binning':[30, -3, 3], 'texX':"#eta(tm)"},
+        'Pair_tm_phi':{'var':'Pair_tm_phi', 'binning':[30, -math.pi, math.pi], 'texX':"#phi(tm)"},
+
+        'Pair_tp_pt':{'var':'Pair_tp_pt', 'binning':[30, 0, 500], 'texX':"p_{T}(tp) (GeV)"},
+        'Pair_tp_pt_low':{'var':'Pair_tp_pt', 'binning':[30, 0, 50], 'texX':"p_{T}(tp) (GeV)"},
+        'Pair_tp_eta':{'var':'Pair_tp_eta', 'binning':[30, -3, 3], 'texX':"#eta(tp)"},
+        'Pair_tp_phi':{'var':'Pair_tp_phi', 'binning':[30, -math.pi, math.pi], 'texX':"#phi(tp)"},
+        }
+
+    plots = []
+    for name, p in plot_cfg.items():
+        print "At " + name
+        h_inc = sample.get1DHistoFromDraw(p['var'], p['binning'], selectionString = preselection)
+        h_inc.SetMarkerStyle( 0 )
+        h_inc.legendText = "inclusive"
+
+        h_slice = {}
+        for i_slice_, slice_ in enumerate( slices ):
+            h_slice[slice_['name']] = sample.get1DHistoFromDraw(p['var'], p['binning'], selectionString = preselection+"&&"+slice_['sel'])
+            h_slice[slice_['name']].legendText = slice_['name'] 
+            h_slice[slice_['name']].SetLineColor( colors[i_slice_] )
+            h_slice[slice_['name']].SetMarkerColor( colors[i_slice_] )
+            h_slice[slice_['name']].SetMarkerStyle( 0 )
+            
+        plots.append( Plot.fromHisto( name+"_SvsC", [[h_inc]] + [ [h_slice[slice_['name']]] for slice_ in slices], texX = p['texX'] ) )
 
     for logY in [False, True]:
         for p in plots: 

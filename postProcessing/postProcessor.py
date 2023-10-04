@@ -152,7 +152,15 @@ def filler( event ):
 
         # print(sqrt(deltaR2({'phi':event.Jet_phi, 'eta':event.Jet_eta}, {'phi':event.Z_phi, 'eta':event.Z_eta})))
 
-        our_tracks = sorted( filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':jet.phi(), 'eta':jet.eta()})<0.4**2 and abs(t.pdgId())==211, list(fwliteReader.event.pf)+list(fwliteReader.event.pflost) ), key = lambda t:-t.pt() )
+        #our_tracks = sorted( filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':jet.phi(), 'eta':jet.eta()})<0.4**2 and abs(t.pdgId())==211, list(fwliteReader.event.pf)+list(fwliteReader.event.pflost) ), key = lambda t:-t.pt() )
+
+        our_tracks_ = jet.getJetConstituents()
+        if not our_tracks_.size()>0: return
+
+
+        our_tracks = filter( lambda t:  abs(t.pdgId())==211, our_tracks_ )
+        our_tracks.sort( key = lambda p:-p.pt() )
+
         logger.debug( "Our tracks %i, pts: %r" %( len(our_tracks), [t.pt() for t in our_tracks]) )
         for i_t, t in enumerate(our_tracks):
             t.index = i_t
@@ -162,10 +170,8 @@ def filler( event ):
         #    track = our_tracks[0]
         #    event.Track_pt, event.Track_eta, event.Track_phi, event.Track_charge = track.pt(), track.eta(), track.phi(), track.charge()
 
-        #our_tracks.sort( key = lambda p:-p.pt() )
         fill_vector_collection( event, "Track", ['pt', 'eta', 'phi', 'charge', 'pdgId'], [ {'pt':t.pt(), 'phi':t.phi(), 'eta':t.eta(), 'charge':t.charge(), 'pdgId':t.pdgId()} for t in our_tracks])
         # print(event.Track_charge[0], event.Track_pdgId[0])
-
 
         pairs = []
         for i_pair, pair in enumerate(itertools.combinations( list(our_tracks), 2)):

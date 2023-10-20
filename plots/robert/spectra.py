@@ -253,7 +253,8 @@ if args.sliceR:
 
 # 2D pair pt eta vs phi
 
-selection = "abs(log(Pair_tm_pt/Pair_tp_pt))<2 && Pair_tm_pt*Pair_tp_pt<3**2"
+#selection = "abs(log(Pair_tm_pt/Pair_tp_pt))<2 && Pair_tm_pt*Pair_tp_pt<3**2"
+selection = "(1)"
 if args.occ:
     print "Make 2D plots"
     h2D = {}

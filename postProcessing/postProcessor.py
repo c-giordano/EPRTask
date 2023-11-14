@@ -107,7 +107,7 @@ variables = [
      "Z_pt/F", "Z_eta/F", "Z_phi/F", "Z_mass/F", "Z_l_pdgId/I",
      "Track[pt/F,eta/F,phi/F,charge/I, pdgId/I, index/I]"
     ]
-pairVarNames = list( map( lambda p:p.split('/')[0], pairVars.split(',') ))
+pairVarNames = list( [p.split('/')[0] for p in pairVars.split(',')])
 fwliteReader = sample.fwliteReader( products = products )
 
 def fill_vector_collection( event, collection_name, collection_varnames, objects, maxN = args.maxNPairs):
@@ -115,7 +115,7 @@ def fill_vector_collection( event, collection_name, collection_varnames, objects
     setattr( event, "n"+collection_name, len(objects) )
     for i_obj, obj in enumerate(objects[:maxN]):
         for var in collection_varnames:
-            if var in obj.keys():
+            if var in list(obj.keys()):
                 if type(obj[var]) == type("string"):
                     obj[var] = int(ord(obj[var]))
                 if type(obj[var]) == type(True):
@@ -129,7 +129,7 @@ def filler( event ):
 
     Z_cand = None
 
-    muons = filter( lambda p:p.pt()>20., list(fwliteReader.event.muons) )
+    muons = [p for p in list(fwliteReader.event.muons) if p.pt()>20.]
     # muons = filter( lambda p:p.pt()>20. , list(fwliteReader.event.muons) )
     if len(muons)>2:
         for m1, m2 in itertools.combinations(muons, 2):
@@ -143,7 +143,7 @@ def filler( event ):
 
     jet = None
     if fwliteReader.event.jets.size()>0:
-        jets = filter( lambda j:j.muonEnergyFraction()<0.2, list(fwliteReader.event.jets) )
+        jets = [j for j in list(fwliteReader.event.jets) if j.muonEnergyFraction()<0.2]
         # print(len(jets))
         if len(jets)>0:
             jet = jets[0]
@@ -164,7 +164,7 @@ def filler( event ):
         if not our_tracks_.size()>0: return
         # do standard in dxy
         # sip3d <
-        our_tracks = filter( lambda t:  abs(t.pdgId())==211 and t.trackerLayersWithMeasurement()>=2 and t.dz()<0.1, our_tracks_ )
+        our_tracks = [t for t in our_tracks_ if abs(t.pdgId())==211 and t.trackerLayersWithMeasurement()>=2 and t.dz()<0.1]
         our_tracks.sort( key = lambda p:-p.pt() )
 
         logger.debug( "Our tracks %i, pts: %r" %( len(our_tracks), [t.pt() for t in our_tracks]) )

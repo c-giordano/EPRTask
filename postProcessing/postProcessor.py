@@ -22,7 +22,7 @@ argParser.add_argument('--sample',      action='store', default='DYJetsToLL_M50_
 argParser.add_argument('--sampleFile',  action='store', default='miniAOD_Fall17', help="Name of the sample.")
 argParser.add_argument('--nJobs',              action='store',      nargs='?', type=int, default=1,  help="Maximum number of simultaneous jobs.")
 argParser.add_argument('--job',                action='store',      nargs='?', type=int, default=0,  help="Run only job i")
-argParser.add_argument('--targetDir',          action='store',      default='v2')
+argParser.add_argument('--targetDir',          action='store',      default='v5')
 argParser.add_argument('--small',              action='store_true', help='Run only on a small subset of the data?')#, default = True)
 argParser.add_argument('--maxNPairs',          action='store', type=int, default=100, help='Maximum number of pairs.')#, default = True)
 argParser.add_argument('--overwrite',          action='store_true', help='Overwrite?')#, default = True)
@@ -30,7 +30,10 @@ argParser.add_argument('--copy_input',         action='store_true', help='xrdcp 
 args = argParser.parse_args()
 
 ## some hard-coded steering variables
-#minPairPt = 2
+minPairPt = 3
+
+if args.small: args.targetDir += "_small"
+
 
 import JetTracking.Tools.logger as _logger
 logger    = _logger.get_logger( args.logLevel, logFile = None )
@@ -81,13 +84,13 @@ _logger_rt.add_fileHandler( output_filename.replace('.root', '_rt.log'), args.lo
 
 # define reader
 products = {
-    'jets':{'type':'vector<pat::Jet>', 'label':("slimmedJets")},
+    'jets':{'type':'vector<pat::Jet>', 'label':("slimmedJets", "", "PAT")},
 #      'genJets': {'type':'vector<reco::GenJet>', 'label':( "ak4GenJets" ) } ,
     #'gt':{'type':'vector<reco::Track>', 'label':("generalTracks", "", "RECO")},
 #    'gt':{'type':'vector<reco::Track>', 'label':("generalTracks", "", "RECO")},
     #'gt':{'type':'vector<reco::Track>', 'label':("generalTracks", "", "RECO")},
-    'pf':{'type':'vector<pat::PackedCandidate>', 'label': ( "packedPFCandidates" )},
-    'pflost':{'type':'vector<pat::PackedCandidate>', 'label': ( "lostTracks" )},
+    'pf':{'type':'vector<pat::PackedCandidate>', 'label': ( "packedPFCandidates", "", "PAT" )},
+    'pflost':{'type':'vector<pat::PackedCandidate>', 'label': ( "lostTracks", "", "PAT" )},
 
     'muons':{'type':'vector<pat::Muon>', 'label':("slimmedMuons", "", "PAT")},
 #    'electrons':{'type':'vector<reco::Electron>', 'label':("electrons", "", "RECO")},
@@ -127,6 +130,7 @@ def filler( event ):
     Z_cand = None
 
     muons = filter( lambda p:p.pt()>20., list(fwliteReader.event.muons) )
+    # muons = filter( lambda p:p.pt()>20. , list(fwliteReader.event.muons) )
     if len(muons)>2:
         for m1, m2 in itertools.combinations(muons, 2):
 
@@ -155,9 +159,12 @@ def filler( event ):
         #our_tracks = sorted( filter( lambda t: deltaR2({'phi':t.phi(), 'eta':t.eta()}, {'phi':jet.phi(), 'eta':jet.eta()})<0.4**2 and abs(t.pdgId())==211, list(fwliteReader.event.pf)+list(fwliteReader.event.pflost) ), key = lambda t:-t.pt() )
 
         our_tracks_ = jet.getJetConstituents()
-        if not our_tracks_.size()>0: return
 
-        our_tracks = filter( lambda t:  abs(t.pdgId())==211, our_tracks_ )
+        # add minimum number of pixel layers!!!
+        if not our_tracks_.size()>0: return
+        # do standard in dxy
+        # sip3d <
+        our_tracks = filter( lambda t:  abs(t.pdgId())==211 and t.trackerLayersWithMeasurement()>=2 and t.dz()<0.1, our_tracks_ )
         our_tracks.sort( key = lambda p:-p.pt() )
 
         logger.debug( "Our tracks %i, pts: %r" %( len(our_tracks), [t.pt() for t in our_tracks]) )
@@ -188,16 +195,7 @@ def filler( event ):
             tm_p4 = ROOT.Math.PtEtaPhiMVector(tm.pt(), tm.eta(), tm.phi(), 0)
             pair_p4 = tp_p4 + tm_p4
 
-            # require minimum pt & OS pairs
-            #if not pair_p4.pt()>minPairPt: continue
-            # if tp.pt() > tm.pt():
-            #     print("+>-")
-            # else:
-            #     print("+<-")
-            #
-            # print("p/m pts", tp.pt(), tm.pt())
-            #
-            # print("Pair_pt", pair_p4.pt())
+            if not pair_p4.pt()>minPairPt: continue
 
 
             pair_dict = { 'tp_pt':tp.pt(), 'tp_eta':tp.eta(), 'tp_phi':tp.phi(), 'tp_index':tp.index, 'tm_index':tm.index, 'tp_charge':tp.charge(), 'tm_charge':tm.charge()}
